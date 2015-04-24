@@ -6,20 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 )
-
-func parseRepo(repo string) string {
-	if strings.HasPrefix(repo, "github.com") {
-		return fmt.Sprintf("https://%s", repo)
-	} else {
-		return repo
-	}
-}
 
 func fetchPackage(repo string) error {
 	wd, err := os.Getwd()
@@ -36,9 +27,7 @@ func fetchPackage(repo string) error {
 			s.Color("green")
 			s.Start()
 
-			gitRepo := parseRepo(repo)
-
-			gitCloneCommand := []string{"git", "clone", gitRepo, packageDir}
+			gitCloneCommand := []string{"go", "get", "-d", repo}
 			gitCloneOutput, err := exec.Command(gitCloneCommand[0], gitCloneCommand[1:]...).CombinedOutput()
 
 			s.Stop()
@@ -240,6 +229,12 @@ func installPackagesFromBunchfile(b *BunchFile) error {
 		if err != nil {
 			return err
 		}
+
+		fmt.Println("")
+	}
+
+	for _, pack := range b.Packages {
+		fmt.Printf("installing %s ...\n", pack.Repo)
 
 		err = setPackageVersion(pack.Repo, pack.Version)
 		if err != nil {

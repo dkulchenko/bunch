@@ -9,10 +9,10 @@ setup:
 	@mkdir build bin || true
 	go get -u github.com/mitchellh/gox
 
-build:
+self-build:
 	@bunch go build -o bin/bunch . 
 
-bootstrap-build:
+build:
 	@go get github.com/dkulchenko/bunch
 	@go build -o bin/bunch .
 
