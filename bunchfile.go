@@ -13,9 +13,8 @@ type Package struct {
 }
 
 type BunchFile struct {
-	Packages    []Package
-	DevPackages []Package
-	Raw         []string
+	Packages []Package
+	Raw      []string
 }
 
 var commentStripRegexp = regexp.MustCompile(`#.*`)

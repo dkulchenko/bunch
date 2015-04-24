@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
@@ -28,6 +27,22 @@ func pathExists(path string) (bool, error) {
 	return false, err
 }
 
+type DetectReader struct {
+	Command *exec.Cmd
+}
+
+var GoGetRequestedInput = false
+
+func (d DetectReader) Read(p []byte) (int, error) {
+	GoGetRequestedInput = true
+	err := d.Command.Process.Kill()
+	if err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
+}
+
 func fetchPackage(repo string) error {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -40,22 +55,33 @@ func fetchPackage(repo string) error {
 		if os.IsNotExist(err) {
 			var s *spinner.Spinner
 			if Verbose {
-				s = spinner.New(spinner.CharSets[9], 50*time.Millisecond)
+				s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
 				s.Prefix = fmt.Sprintf("fetching %s ", repo)
 				s.Color("green")
 				s.Start()
 			}
 
 			goGetCommand := []string{"go", "get", "-d", repo}
-			goGetOutput, err := exec.Command(goGetCommand[0], goGetCommand[1:]...).CombinedOutput()
+			goGetCmd := exec.Command(goGetCommand[0], goGetCommand[1:]...)
+			goGetCmd.Stdin = DetectReader{Command: goGetCmd}
+			goGetOutput, err := goGetCmd.CombinedOutput()
 
 			if Verbose {
 				s.Stop()
-				fmt.Printf("\rfetching %s ... %s\n", repo, color.GreenString("done"))
 			}
 
 			if err != nil {
-				return errors.New(fmt.Sprintf("failed cloning repo for package %s, error: %s, output: %s", repo, err, goGetOutput))
+				if GoGetRequestedInput {
+					fmt.Printf("\rfetching %s ... %s\n", repo, color.RedString("failed"))
+					fmt.Println("go get requested credentials, make sure you spelled the package name correctly")
+					os.Exit(1)
+				} else {
+					return errors.New(fmt.Sprintf("failed cloning repo for package %s, error: %s, output: %s", repo, err, goGetOutput))
+				}
+			} else {
+				if Verbose {
+					fmt.Printf("\rfetching %s ... %s\n", repo, color.GreenString("done"))
+				}
 			}
 
 			return nil
@@ -73,7 +99,7 @@ func fetchPackage(repo string) error {
 
 	var s *spinner.Spinner
 	if Verbose {
-		s = spinner.New(spinner.CharSets[9], 50*time.Millisecond)
+		s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
 		s.Prefix = fmt.Sprintf("refreshing %s ", repo)
 		s.Color("green")
 		s.Start()
@@ -128,7 +154,7 @@ func fetchPackageDependencies(repo string) error {
 	var s *spinner.Spinner
 
 	if Verbose {
-		s = spinner.New(spinner.CharSets[9], 50*time.Millisecond)
+		s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
 		s.Prefix = fmt.Sprintf("  - fetching dependencies for %s ", repo)
 		s.Color("green")
 		s.Start()
@@ -169,7 +195,7 @@ func buildPackage(repo string) error {
 	var s *spinner.Spinner
 
 	if Verbose {
-		s = spinner.New(spinner.CharSets[9], 50*time.Millisecond)
+		s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
 		s.Prefix = fmt.Sprintf("  - building package %s ", repo)
 		s.Color("green")
 		s.Start()
@@ -210,7 +236,7 @@ func installPackage(repo string) error {
 	var s *spinner.Spinner
 
 	if Verbose {
-		s = spinner.New(spinner.CharSets[9], 50*time.Millisecond)
+		s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
 		s.Prefix = fmt.Sprintf("  - installing package %s ", repo)
 		s.Color("green")
 		s.Start()
@@ -255,7 +281,7 @@ func setPackageVersion(repo string, version string) error {
 	var s *spinner.Spinner
 
 	if Verbose {
-		s = spinner.New(spinner.CharSets[9], 50*time.Millisecond)
+		s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
 		s.Prefix = fmt.Sprintf("  - setting version of %s to %s ", repo, version)
 		s.Color("green")
 		s.Start()
@@ -386,7 +412,7 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool)
 		if needsUpdate || forceUpdate {
 			var s *spinner.Spinner
 			if !Verbose {
-				s = spinner.New(spinner.CharSets[9], 50*time.Millisecond)
+				s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
 				s.Prefix = fmt.Sprintf("\rfetching %s ... ", pack.Repo)
 				s.Color("green")
 				s.Start()
@@ -605,6 +631,82 @@ func removePackages(packages []string, bunch *BunchFile, removeGlobally bool) er
 
 	for pack, _ := range allPackages {
 		if len(packagesUsed[pack]) == 0 {
+			fmt.Printf("removing package %s ...", pack)
+			err := removePackage(pack)
+
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("\rremoving package %s ... %s      \n", pack, color.GreenString("done"))
+		}
+	}
+
+	return nil
+}
+
+func prunePackages(bunch *BunchFile) error {
+	err := setVendorEnv()
+	if err != nil {
+		return err
+	}
+
+	gopath := os.Getenv("GOPATH")
+
+	packagesUsed := make(map[string]bool)
+
+	for _, packInfo := range bunch.Packages {
+		pack := packInfo.Repo
+
+		if exists, _ := pathExists(path.Join(gopath, "src", pack)); !exists {
+			continue
+		}
+
+		goListCommand := []string{"go", "list", "--json", pack}
+		output, err := exec.Command(goListCommand[0], goListCommand[1:]...).Output()
+		if err != nil {
+			return err
+		}
+
+		packageInfo := GoList{}
+		err = json.Unmarshal(output, &packageInfo)
+
+		if err != nil {
+			return err
+		}
+
+		packagesUsed[pack] = true
+
+		for _, dep := range packageInfo.Deps {
+			srcPath := path.Join(gopath, "src", dep)
+			if exists, _ := pathExists(srcPath); exists {
+				packagesUsed[dep] = true
+			}
+		}
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	err = os.Chdir(path.Join(gopath, "src"))
+	if err != nil {
+		return err
+	}
+
+	packFiles, err := filepath.Glob("*/*/*")
+	if err != nil {
+		return err
+	}
+
+	err = os.Chdir(wd)
+	if err != nil {
+		return err
+	}
+
+	for _, pack := range packFiles {
+		if !packagesUsed[pack] {
 			fmt.Printf("removing package %s ...", pack)
 			err := removePackage(pack)
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/codegangsta/cli"
 )
@@ -10,6 +11,9 @@ var InitialPath string
 var InitialGoPath string
 
 var Verbose bool
+
+var SpinnerCharSet = 14
+var SpinnerInterval = 50 * time.Millisecond
 
 func main() {
 	InitialPath = os.Getenv("PATH")

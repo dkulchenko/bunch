@@ -97,8 +97,6 @@ func uninstallCommand(c *cli.Context) {
 	// bunch uninstall github.com/abc/xyz --save
 	// bunch uninstall github.com/abc/xyz -g
 
-	// use go list --json to remove unreferences deps (when not using -g)
-
 	packages := c.Args()
 
 	err := setupVendoring()
@@ -147,7 +145,25 @@ func uninstallCommand(c *cli.Context) {
 func pruneCommand(c *cli.Context) {
 	// bunch prune
 
-	// use go list --json
+	err := setupVendoring()
+	if err != nil {
+		log.Fatalf("unable to set up vendor dirs: %s", err)
+	}
+
+	var bunch *BunchFile
+	if exists, _ := pathExists("Bunchfile"); exists {
+		bunch, err = readBunchfile()
+		if err != nil {
+			log.Fatalf("unable to read Bunchfile: %s", err)
+		}
+	} else {
+		log.Fatalf("can't prune without Bunchfile")
+	}
+
+	err = prunePackages(bunch)
+	if err != nil {
+		log.Fatalf("failed pruning packages: %s", err)
+	}
 }
 
 func outdatedCommand(c *cli.Context) {
