@@ -70,6 +70,32 @@ func (b *BunchFile) AddPackage(packString string) error {
 	return nil
 }
 
+func (b *BunchFile) RemovePackage(packString string) error {
+	pack := parsePackage(packString)
+
+	index, present := b.RawIndex(pack.Repo)
+
+	if present {
+		packIndex, packPresent := b.PackageIndex(pack.Repo)
+
+		if packPresent {
+			if packIndex < len(b.Packages)-1 {
+				b.Packages = append(b.Packages[:packIndex], b.Packages[packIndex+1:]...)
+			} else {
+				b.Packages = b.Packages[:packIndex]
+			}
+		}
+
+		if index < len(b.Raw)-1 {
+			b.Raw = append(b.Raw[:index], b.Raw[index+1:]...)
+		} else {
+			b.Raw = b.Raw[:index]
+		}
+	}
+
+	return nil
+}
+
 func (b *BunchFile) Save() error {
 	err := ioutil.WriteFile("Bunchfile", []byte(strings.Join(b.Raw, "\n")), 0644)
 

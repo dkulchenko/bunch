@@ -1,11 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -447,6 +451,169 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool)
 
 	if !anyNeededUpdate && !Verbose && !forceUpdate {
 		color.Green("up to date (use 'bunch update' to force update)")
+	}
+
+	return nil
+}
+
+type GoList struct {
+	Name    string
+	Doc     string
+	Imports []string
+	Deps    []string
+}
+
+func isEmptyDir(name string) (bool, error) {
+	entries, err := ioutil.ReadDir(name)
+	if err != nil {
+		return false, err
+	}
+	return len(entries) == 0, nil
+}
+
+func cleanEmpties(emptyPath string) error {
+	higherPath := filepath.Dir(emptyPath)
+	if empty, _ := isEmptyDir(higherPath); empty {
+		err := os.Remove(higherPath)
+		if err != nil {
+			return err
+		}
+
+		highestPath := filepath.Dir(higherPath)
+		if empty, _ := isEmptyDir(highestPath); empty {
+			err := os.Remove(highestPath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func removePackage(pack string) error {
+	gopath := os.Getenv("GOPATH")
+
+	srcPath := path.Join(gopath, "src", pack)
+	if exists, _ := pathExists(srcPath); exists {
+		err := os.RemoveAll(srcPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := cleanEmpties(srcPath)
+	if err != nil {
+		return err
+	}
+
+	archPath := fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH)
+	pkgPath := fmt.Sprintf("%s.a", path.Join(gopath, "pkg", archPath, pack))
+	if exists, _ := pathExists(pkgPath); exists {
+		err := os.Remove(pkgPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = cleanEmpties(pkgPath)
+	if err != nil {
+		return err
+	}
+
+	_, binFile := path.Split(pack)
+
+	if binFile != "" {
+		binPath := path.Join(gopath, "bin", binFile)
+		if exists, _ := pathExists(binPath); exists {
+			err := os.Remove(binPath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func removePackages(packages []string, bunch *BunchFile, removeGlobally bool) error {
+	if !removeGlobally {
+		err := setVendorEnv()
+		if err != nil {
+			return err
+		}
+	}
+
+	gopath := os.Getenv("GOPATH")
+
+	allPackages := make(map[string]bool)
+	packagesUsed := make(map[string][]string)
+
+	combinedPackagesList := packages
+	for _, packData := range bunch.Packages {
+		combinedPackagesList = append(combinedPackagesList, packData.Repo)
+	}
+
+	for _, pack := range combinedPackagesList {
+		if exists, _ := pathExists(path.Join(gopath, "src", pack)); !exists {
+			continue
+		}
+
+		goListCommand := []string{"go", "list", "--json", pack}
+		output, err := exec.Command(goListCommand[0], goListCommand[1:]...).Output()
+		if err != nil {
+			return err
+		}
+
+		packageInfo := GoList{}
+		err = json.Unmarshal(output, &packageInfo)
+
+		if err != nil {
+			return err
+		}
+
+		removingPackage := false
+		for _, removePack := range packages {
+			if removePack == pack {
+				removingPackage = true
+			}
+		}
+
+		if !removingPackage {
+			packagesUsed[pack] = append(packagesUsed[pack], "app")
+		}
+
+		for _, dep := range packageInfo.Deps {
+			srcPath := path.Join(gopath, "src", dep)
+			if exists, _ := pathExists(srcPath); exists {
+				allPackages[dep] = true
+
+				if !removingPackage {
+					packagesUsed[dep] = append(packagesUsed[dep], pack)
+				}
+			}
+		}
+
+		allPackages[pack] = true
+	}
+
+	for _, pack := range packages {
+		if len(packagesUsed[pack]) > 0 {
+			color.Red("unable to remove package %s, is depended on by %s", pack, strings.Join(packagesUsed[pack], ", "))
+		}
+	}
+
+	for pack, _ := range allPackages {
+		if len(packagesUsed[pack]) == 0 {
+			fmt.Printf("removing package %s ...", pack)
+			err := removePackage(pack)
+
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("\rremoving package %s ... %s      \n", pack, color.GreenString("done"))
+		}
 	}
 
 	return nil
