@@ -13,7 +13,6 @@ self-build:
 	@bunch go build -o bin/bunch . 
 
 build:
-	@go get github.com/dkulchenko/bunch
 	@go build -o bin/bunch .
 
 run:

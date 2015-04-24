@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
 	"github.com/codegangsta/cli"
@@ -298,9 +300,43 @@ func shellCommand(c *cli.Context) {
 	fmt.Println("exiting bunch shell")
 }
 
+var shimScript = `#!/bin/bash
+
+PATH=$(echo "$PATH" | sed -e "s|$HOME/.bunch/shims:||g")
+
+if [[ -n $(echo "$PATH" | grep .bunch/shims) ]]; then
+  echo bunch warning: unable to remove shim from PATH, falling back to backup PATH
+  PATH=/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/bin
+fi
+
+if [[ -f "Bunchfile" && -d ".vendor" ]]; then
+  WD=$(pwd)
+  PATH="$WD/.vendor/bin:$PATH" GOPATH="$WD/.vendor/" go $@
+else
+  go $@
+fi
+`
+
 func shimCommand(c *cli.Context) {
-	// bunch shim outputs help text
-	// bunch shim - outputs a shell script
-	// in .bash_profile...
-	// if which bunch > /dev/null; then eval "$(bunch shim -)"; fi
+	// bunch shim outputs shell script
+
+	err := os.MkdirAll(path.Join(os.Getenv("HOME"), ".bunch", "shims"), 0755)
+	if err != nil {
+		log.Fatalf("unable to create ~/.bunch")
+	}
+
+	goShimDir := path.Join(os.Getenv("HOME"), ".bunch", "shims")
+	goShimPath := path.Join(goShimDir, "go")
+	err = ioutil.WriteFile(goShimPath, []byte(shimScript), 0755)
+	if err != nil {
+		log.Fatalf("unable to create shim")
+	}
+
+	if len(c.Args()) > 0 {
+		fmt.Printf("export PATH=%s:$PATH\n", goShimDir)
+	} else {
+		fmt.Println(`To have 'go' be automatically bunch-aware, add this to .bash_profile or .zshrc:
+
+if which bunch > /dev/null; then eval "$(bunch shim -)"; fi`)
+	}
 }
