@@ -168,20 +168,92 @@ func pruneCommand(c *cli.Context) {
 
 func outdatedCommand(c *cli.Context) {
 	// bunch outdated
+
+	err := setupVendoring()
+	if err != nil {
+		log.Fatalf("unable to set up vendor dirs: %s", err)
+	}
+
+	var bunch *BunchFile
+	if exists, _ := pathExists("Bunchfile"); exists {
+		bunch, err = readBunchfile()
+		if err != nil {
+			log.Fatalf("unable to read Bunchfile: %s", err)
+		}
+	} else {
+		log.Fatalf("can't check for outdated packages without Bunchfile")
+	}
+
+	err = checkOutdatedPackages(bunch)
+	if err != nil {
+		log.Fatalf("failed checking for outdated packages: %s", err)
+	}
 }
 
 func lockCommand(c *cli.Context) {
 	// bunch lock
+
+	err := setupVendoring()
+	if err != nil {
+		log.Fatalf("unable to set up vendor dirs: %s", err)
+	}
+
+	var bunch *BunchFile
+	if exists, _ := pathExists("Bunchfile"); exists {
+		bunch, err = readBunchfile()
+		if err != nil {
+			log.Fatalf("unable to read Bunchfile: %s", err)
+		}
+	} else {
+		log.Fatalf("can't lock packages without Bunchfile")
+	}
+
+	err = lockPackages(bunch)
+	if err != nil {
+		log.Fatalf("failed locking packages: %s", err)
+	}
+
 }
 
 func rebuildCommand(c *cli.Context) {
 	// bunch rebuild (also works as restore)
+
+	err := setupVendoring()
+	if err != nil {
+		log.Fatalf("unable to set up vendor dirs: %s", err)
+	}
+
+	var bunch *BunchFile
+	if exists, _ := pathExists("Bunchfile"); exists {
+		bunch, err = readBunchfile()
+		if err != nil {
+			log.Fatalf("unable to read Bunchfile: %s", err)
+		}
+	} else {
+		log.Fatalf("can't rebuild packages without Bunchfile")
+	}
+
+	err = rebuildPackages(bunch)
+	if err != nil {
+		log.Fatalf("failed rebuilding packages packages: %s", err)
+	}
+
 }
 
 func generateCommand(c *cli.Context) {
 	// bunch generate
 
 	// use go list --json (scan for deps with more than 1-2 / parts)
+
+	err := setupVendoring()
+	if err != nil {
+		log.Fatalf("unable to set up vendor dirs: %s", err)
+	}
+
+	err = generateBunchfile()
+	if err != nil {
+		log.Fatalf("failed checking for outdated packages: %s", err)
+	}
 }
 
 func goCommand(c *cli.Context) {

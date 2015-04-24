@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"regexp"
@@ -8,8 +9,9 @@ import (
 )
 
 type Package struct {
-	Repo    string
-	Version string
+	Repo          string
+	Version       string
+	LockedVersion string
 }
 
 type BunchFile struct {
@@ -120,6 +122,20 @@ func readBunchfile() (*BunchFile, error) {
 		Raw: strings.Split(strings.TrimSpace(string(bunchbytes)), "\n"),
 	}
 
+	lockedCommits := make(map[string]string)
+
+	if exists, _ := pathExists("Bunchfile.lock"); exists {
+		lockBytes, err := ioutil.ReadFile("Bunchfile.lock")
+		if err != nil {
+			return &BunchFile{}, err
+		}
+
+		err = json.Unmarshal(lockBytes, &lockedCommits)
+		if err != nil {
+			return &BunchFile{}, err
+		}
+	}
+
 	for _, line := range bunch.Raw {
 		line = commentStripRegexp.ReplaceAllLiteralString(line, "")
 		line = strings.TrimSpace(line)
@@ -142,8 +158,17 @@ func readBunchfile() (*BunchFile, error) {
 			version = packageInfo[1]
 		}
 
-		bunch.Packages = append(bunch.Packages, Package{Repo: repo, Version: version})
+		var lockedVersion string
+		if lockedCommits[repo] != "" {
+			lockedVersion = lockedCommits[repo]
+		}
+
+		bunch.Packages = append(bunch.Packages, Package{Repo: repo, Version: version, LockedVersion: lockedVersion})
 	}
 
 	return &bunch, nil
+}
+
+func generateBunchfile() error {
+	return nil
 }

@@ -279,18 +279,47 @@ func setPackageVersion(repo string, version string) error {
 	return nil
 }
 
-func checkPackageRecency(repo string, version string) (bool, error) { // bool = needsUpdate
+func countNonEmptyStrings(ar []string) int {
+	counter := 0
+
+	for _, el := range ar {
+		if el != "" {
+			counter += 1
+		}
+	}
+
+	return counter
+}
+
+type PackageRecencyInfo struct {
+	LatestCommit         string
+	LatestUpstreamCommit string
+	InstalledCommit      string
+	UpstreamDiffCount    int
+	InstalledDiffCount   int
+}
+
+func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bool = needsUpdate
+	repo := pack.Repo
+	version := pack.Version
+
+	NilInfo := PackageRecencyInfo{}
+
 	wd, err := os.Getwd()
 	if err != nil {
-		return false, err
+		return false, NilInfo, err
+	}
+
+	if version == "" {
+		version = "master"
 	}
 
 	packageDir := path.Join(wd, ".vendor", "src", repo)
 	if exists, _ := pathExists(packageDir); !exists {
-		return true, nil
+		return true, NilInfo, nil
 	} else {
 		if version == "" { // if version wasn't specified and the repo exists, continue
-			return false, nil
+			return false, NilInfo, nil
 		}
 	}
 
@@ -300,36 +329,69 @@ func checkPackageRecency(repo string, version string) (bool, error) { // bool = 
 
 	err = os.Chdir(packageDir)
 	if err != nil {
-		return false, err
+		return false, NilInfo, err
 	}
 
 	if exists, _ := pathExists(".git"); !exists {
-		return true, nil // if it's not git, force an update (improve this later)
+		return true, NilInfo, nil // if it's not git, force an update (improve this later)
 	} else {
 		getVersionCommand := []string{"git", "rev-parse", "-q", "--verify", version}
 		getHEADCommand := []string{"git", "rev-parse", "-q", "--verify", "HEAD"}
+		getUpstreamVersionCommand := []string{"git", "rev-parse", "-q", "--verify", "origin/master"}
+		getUpstreamDiffCommand := []string{"git", "log", "HEAD..origin/master", "--pretty=oneline"}
+		getInstalledDiffCommand := []string{"git", "log", fmt.Sprintf("HEAD..%s", version), "--pretty=oneline"}
 
 		getVersionOutput, err := exec.Command(getVersionCommand[0], getVersionCommand[1:]...).Output()
 		if err != nil {
-			return false, err
+			return false, NilInfo, err
+		}
+
+		getUpstreamVersionOutput, err := exec.Command(getUpstreamVersionCommand[0], getUpstreamVersionCommand[1:]...).Output()
+		if err != nil {
+			return false, NilInfo, err
 		}
 
 		getHEADOutput, err := exec.Command(getHEADCommand[0], getHEADCommand[1:]...).Output()
 		if err != nil {
-			return false, err
+			return false, NilInfo, err
+		}
+
+		upstreamDiffCount := 0
+		getUpstreamDiffOutput, err := exec.Command(getUpstreamDiffCommand[0], getUpstreamDiffCommand[1:]...).CombinedOutput()
+		if err == nil {
+			upstreamDiffCount = countNonEmptyStrings(strings.Split(strings.TrimSpace(string(getUpstreamDiffOutput)), "\n"))
+		}
+
+		installedDiffCount := 0
+		getInstalledDiffOutput, err := exec.Command(getInstalledDiffCommand[0], getInstalledDiffCommand[1:]...).CombinedOutput()
+		if err == nil {
+			installedDiffCount = countNonEmptyStrings(strings.Split(strings.TrimSpace(string(getInstalledDiffOutput)), "\n"))
 		}
 
 		versionString := strings.TrimSpace(string(getVersionOutput))
 		HEADString := strings.TrimSpace(string(getHEADOutput))
+		upstreamVersionString := strings.TrimSpace(string(getUpstreamVersionOutput))
+
+		recencyInfo := PackageRecencyInfo{
+			LatestCommit:         versionString,
+			LatestUpstreamCommit: upstreamVersionString,
+			InstalledCommit:      HEADString,
+			UpstreamDiffCount:    upstreamDiffCount,
+			InstalledDiffCount:   installedDiffCount,
+		}
 
 		if versionString != HEADString {
-			return true, nil
+			if pack.LockedVersion != HEADString {
+				return true, recencyInfo, nil
+			} else {
+				return false, recencyInfo, nil
+			}
 		} else {
-			return false, nil
+			return false, recencyInfo, nil
 		}
 	}
 
-	return false, nil
+	return false, NilInfo, nil
 }
 
 func parsePackage(packString string) Package {
@@ -376,7 +438,7 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool)
 	packageNeedsUpdate := make(map[string]bool)
 
 	for _, pack := range packages {
-		needsUpdate, err := checkPackageRecency(pack.Repo, pack.Version)
+		needsUpdate, _, err := checkPackageRecency(pack)
 		if err != nil {
 			return err
 		}
@@ -424,7 +486,12 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool)
 				fmt.Printf("installing %s ...", pack.Repo)
 			}
 
-			err := setPackageVersion(pack.Repo, pack.Version)
+			version := pack.Version
+			if pack.LockedVersion != "" && !forceUpdate {
+				version = pack.LockedVersion
+			}
+
+			err := setPackageVersion(pack.Repo, version)
 			if err != nil {
 				return err
 			}
@@ -695,5 +762,88 @@ func prunePackages(bunch *BunchFile) error {
 		}
 	}
 
+	return nil
+}
+
+func gitShort(fullhash string) string {
+	if len(fullhash) < 8 {
+		return fullhash
+	} else {
+		return fullhash[:7]
+	}
+}
+
+func commitsPlural(n int) string {
+	if n == 1 {
+		return "1 commit"
+	} else {
+		return fmt.Sprintf("%d commits", n)
+	}
+}
+
+func checkOutdatedPackages(b *BunchFile) error {
+	for _, pack := range b.Packages {
+		fmt.Printf("package %s ... ", pack.Repo)
+
+		err := fetchPackage(pack.Repo)
+		if err != nil {
+			return err
+		}
+
+		needsUpdate, recency, err := checkPackageRecency(pack)
+		if err != nil {
+			return err
+		}
+
+		if !needsUpdate {
+			if recency.UpstreamDiffCount == 0 {
+				fmt.Printf("\rpackage %s ... %s\n", pack.Repo, color.GreenString("up to date"))
+			} else {
+				if pack.LockedVersion == "" {
+					fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.YellowString("behind upstream"), commitsPlural(recency.UpstreamDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+				} else {
+					fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.YellowString("locked, but behind upstream"), commitsPlural(recency.UpstreamDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+				}
+			}
+		} else {
+			if pack.LockedVersion == "" {
+				fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.RedString("outdated"), commitsPlural(recency.InstalledDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+			} else {
+				fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.YellowString("locked, but outdated"), commitsPlural(recency.InstalledDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+			}
+		}
+	}
+
+	return nil
+}
+
+func lockPackages(b *BunchFile) error {
+	lockList := make(map[string]string)
+
+	for _, pack := range b.Packages {
+		_, recency, err := checkPackageRecency(pack)
+		if err != nil {
+			return err
+		}
+
+		lockList[pack.Repo] = recency.LatestCommit
+	}
+
+	jsonOut, err := json.MarshalIndent(lockList, "", "    ")
+	if err != nil {
+		return err
+	} else {
+		err = ioutil.WriteFile("Bunchfile.lock", jsonOut, 0644)
+		if err != nil {
+			return err
+		}
+
+		color.Green("Bunchfile.lock generated successfully")
+	}
+
+	return nil
+}
+
+func rebuildPackages(b *BunchFile) error {
 	return nil
 }
