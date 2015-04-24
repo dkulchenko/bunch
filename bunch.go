@@ -54,7 +54,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) {
-				installCommand(c, false)
+				installCommand(c, false, true)
 			},
 		},
 		{
@@ -62,7 +62,7 @@ func main() {
 			Aliases: []string{"u"},
 			Usage:   "update package(s)",
 			Action: func(c *cli.Context) {
-				installCommand(c, true)
+				installCommand(c, true, true)
 			},
 		},
 		{
@@ -108,7 +108,7 @@ func main() {
 			Name:  "rebuild",
 			Usage: "rebuild all dependencies",
 			Action: func(c *cli.Context) {
-				rebuildCommand(c)
+				installCommand(c, true, false)
 			},
 		},
 		{

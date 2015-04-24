@@ -413,20 +413,20 @@ func parsePackage(packString string) Package {
 	return pack
 }
 
-func installPackagesFromBunchfile(b *BunchFile, forceUpdate bool) error {
-	return installPackages(b.Packages, false, forceUpdate)
+func installPackagesFromBunchfile(b *BunchFile, forceUpdate bool, checkUpstream bool) error {
+	return installPackages(b.Packages, false, forceUpdate, checkUpstream)
 }
 
-func installPackagesFromRepoStrings(packageStrings []string, installGlobally bool, forceUpdate bool) error {
+func installPackagesFromRepoStrings(packageStrings []string, installGlobally bool, forceUpdate bool, checkUpstream bool) error {
 	packages := make([]Package, len(packageStrings))
 	for i, packString := range packageStrings {
 		packages[i] = parsePackage(packString)
 	}
 
-	return installPackages(packages, installGlobally, forceUpdate)
+	return installPackages(packages, installGlobally, forceUpdate, checkUpstream)
 }
 
-func installPackages(packages []Package, installGlobally bool, forceUpdate bool) error {
+func installPackages(packages []Package, installGlobally bool, forceUpdate bool, checkUpstream bool) error {
 	if !installGlobally {
 		err := setVendorEnv()
 		if err != nil {
@@ -448,7 +448,7 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool)
 			anyNeededUpdate = true
 		}
 
-		if needsUpdate || forceUpdate {
+		if (needsUpdate || forceUpdate) && checkUpstream {
 			var s *spinner.Spinner
 			if !Verbose {
 				s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
@@ -841,9 +841,5 @@ func lockPackages(b *BunchFile) error {
 		color.Green("Bunchfile.lock generated successfully")
 	}
 
-	return nil
-}
-
-func rebuildPackages(b *BunchFile) error {
 	return nil
 }

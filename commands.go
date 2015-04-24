@@ -24,7 +24,7 @@ func setupVendoring() error {
 	return nil
 }
 
-func installCommand(c *cli.Context, forceUpdate bool) {
+func installCommand(c *cli.Context, forceUpdate bool, checkUpstream bool) {
 	// bunch install
 	// bunch install github.com/abc/xyz
 	// bunch install github.com/abc/xyz github.com/abc/def
@@ -51,7 +51,7 @@ func installCommand(c *cli.Context, forceUpdate bool) {
 			log.Fatalf("unable to read Bunchfile: %s", err)
 		}
 
-		err = installPackagesFromBunchfile(bunch, forceUpdate)
+		err = installPackagesFromBunchfile(bunch, forceUpdate, checkUpstream)
 
 		if err != nil {
 			log.Fatalf("failed installing packages: %s", err)
@@ -70,7 +70,7 @@ func installCommand(c *cli.Context, forceUpdate bool) {
 			bunch = createBunchfile()
 		}
 
-		err := installPackagesFromRepoStrings(packages, global, forceUpdate)
+		err := installPackagesFromRepoStrings(packages, global, forceUpdate, checkUpstream)
 		if err != nil {
 			log.Fatalf("failed installing packages: %s", err)
 		}
@@ -211,31 +211,6 @@ func lockCommand(c *cli.Context) {
 	err = lockPackages(bunch)
 	if err != nil {
 		log.Fatalf("failed locking packages: %s", err)
-	}
-
-}
-
-func rebuildCommand(c *cli.Context) {
-	// bunch rebuild (also works as restore)
-
-	err := setupVendoring()
-	if err != nil {
-		log.Fatalf("unable to set up vendor dirs: %s", err)
-	}
-
-	var bunch *BunchFile
-	if exists, _ := pathExists("Bunchfile"); exists {
-		bunch, err = readBunchfile()
-		if err != nil {
-			log.Fatalf("unable to read Bunchfile: %s", err)
-		}
-	} else {
-		log.Fatalf("can't rebuild packages without Bunchfile")
-	}
-
-	err = rebuildPackages(bunch)
-	if err != nil {
-		log.Fatalf("failed rebuilding packages packages: %s", err)
 	}
 
 }
