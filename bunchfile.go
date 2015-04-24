@@ -4,8 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"os/exec"
+	"path"
 	"regexp"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 type Package struct {
@@ -170,5 +175,39 @@ func readBunchfile() (*BunchFile, error) {
 }
 
 func generateBunchfile() error {
+	bunch := BunchFile{}
+
+	gopath := os.Getenv("GOPATH")
+
+	goListCommand := []string{"go", "list", "--json", "."}
+	output, err := exec.Command(goListCommand[0], goListCommand[1:]...).Output()
+	if err != nil {
+		return err
+	}
+
+	packageInfo := GoList{}
+	err = json.Unmarshal(output, &packageInfo)
+
+	if err != nil {
+		return err
+	}
+
+	for _, dep := range packageInfo.Deps {
+		depPath := path.Join(gopath, "src", dep)
+		if exists, _ := pathExists(depPath); exists {
+			err = bunch.AddPackage(dep)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err = bunch.Save()
+	if err != nil {
+		return err
+	}
+
+	color.Green("Bunchfile generated successfully")
+
 	return nil
 }

@@ -218,8 +218,6 @@ func lockCommand(c *cli.Context) {
 func generateCommand(c *cli.Context) {
 	// bunch generate
 
-	// use go list --json (scan for deps with more than 1-2 / parts)
-
 	err := setupVendoring()
 	if err != nil {
 		log.Fatalf("unable to set up vendor dirs: %s", err)
