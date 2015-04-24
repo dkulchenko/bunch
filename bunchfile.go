@@ -80,6 +80,10 @@ func (b *BunchFile) Save() error {
 	return nil
 }
 
+func createBunchfile() *BunchFile {
+	return &BunchFile{}
+}
+
 func readBunchfile() (*BunchFile, error) {
 	bunchbytes, err := ioutil.ReadFile("Bunchfile")
 

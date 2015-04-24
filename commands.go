@@ -32,18 +32,19 @@ func installCommand(c *cli.Context) {
 	// bunch install abc/xyz # github shorthand
 
 	packages := c.Args()
-	bunch, err := readBunchfile()
-	if err != nil {
-		log.Fatalf("unable to read Bunchfile: %s", err)
-	}
 
-	err = setupVendoring()
+	err := setupVendoring()
 	if err != nil {
 		log.Fatalf("unable to set up vendor dirs: %s", err)
 	}
 
 	if len(packages) == 0 {
-		err := installPackagesFromBunchfile(bunch)
+		bunch, err := readBunchfile()
+		if err != nil {
+			log.Fatalf("unable to read Bunchfile: %s", err)
+		}
+
+		err = installPackagesFromBunchfile(bunch)
 
 		if err != nil {
 			log.Fatalf("failed installing packages: %s", err)
@@ -51,6 +52,16 @@ func installCommand(c *cli.Context) {
 	} else {
 		global := c.Bool("g")
 		save := c.Bool("save")
+
+		var bunch *BunchFile
+		if exists, _ := pathExists("Bunchfile"); exists {
+			bunch, err = readBunchfile()
+			if err != nil {
+				log.Fatalf("unable to read Bunchfile: %s", err)
+			}
+		} else {
+			bunch = createBunchfile()
+		}
 
 		err := installPackages(packages, global)
 		if err != nil {
@@ -86,10 +97,14 @@ func uninstallCommand(c *cli.Context) {
 	// bunch uninstall github.com/abc/xyz
 	// bunch uninstall github.com/abc/xyz --save
 	// bunch uninstall github.com/abc/xyz -g
+
+	// use go list --json to remove unreferences deps (when not using -g)
 }
 
 func pruneCommand(c *cli.Context) {
 	// bunch prune
+
+	// use go list --json
 }
 
 func outdatedCommand(c *cli.Context) {
@@ -106,6 +121,8 @@ func rebuildCommand(c *cli.Context) {
 
 func generateCommand(c *cli.Context) {
 	// bunch generate
+
+	// use go list --json
 }
 
 func goCommand(c *cli.Context) {
