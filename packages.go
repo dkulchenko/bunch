@@ -6,11 +6,23 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
 )
+
+func pathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
 
 func fetchPackage(repo string) error {
 	wd, err := os.Getwd()
@@ -27,14 +39,14 @@ func fetchPackage(repo string) error {
 			s.Color("green")
 			s.Start()
 
-			gitCloneCommand := []string{"go", "get", "-d", repo}
-			gitCloneOutput, err := exec.Command(gitCloneCommand[0], gitCloneCommand[1:]...).CombinedOutput()
+			goGetCommand := []string{"go", "get", "-d", repo}
+			goGetOutput, err := exec.Command(goGetCommand[0], goGetCommand[1:]...).CombinedOutput()
 
 			s.Stop()
 			fmt.Printf("\rfetching %s ... %s\n", repo, color.GreenString("done"))
 
 			if err != nil {
-				return errors.New(fmt.Sprintf("failed cloning git repo for package %s, error: %s, output: %s", repo, err, gitCloneOutput))
+				return errors.New(fmt.Sprintf("failed cloning repo for package %s, error: %s, output: %s", repo, err, goGetOutput))
 			}
 
 			return nil
@@ -51,14 +63,26 @@ func fetchPackage(repo string) error {
 	s.Color("green")
 	s.Start()
 
-	gitFetchCommand := []string{"git", "fetch", "--all"}
-	gitFetchOutput, err := exec.Command(gitFetchCommand[0], gitFetchCommand[1:]...).CombinedOutput()
+	var refreshCommand []string
 
-	s.Stop()
-	fmt.Printf("\rrefreshing %s ... %s\n", repo, color.GreenString("done"))
+	if exists, _ := pathExists(path.Join(packageDir, ".git")); exists {
+		refreshCommand = []string{"git", "fetch", "--all"}
+	} else if exists, _ := pathExists(path.Join(packageDir, ".hg")); exists {
+		refreshCommand = []string{"hg", "pull"}
+	}
 
-	if err != nil {
-		return errors.New(fmt.Sprintf("failed updating git repo for package %s, error: %s, output: %s", repo, err, gitFetchOutput))
+	if len(refreshCommand) > 0 {
+		refreshOutput, err := exec.Command(refreshCommand[0], refreshCommand[1:]...).CombinedOutput()
+
+		s.Stop()
+		fmt.Printf("\rrefreshing %s ... %s\n", repo, color.GreenString("done"))
+
+		if err != nil {
+			return errors.New(fmt.Sprintf("failed updating repo for package %s, error: %s, output: %s", repo, err, refreshOutput))
+		}
+	} else {
+		s.Stop()
+		fmt.Printf("\rrefreshing %s ... %s\n", repo, color.YellowString("skipped"))
 	}
 
 	err = os.Chdir(wd)
@@ -178,6 +202,10 @@ func installPackage(repo string) error {
 }
 
 func setPackageVersion(repo string, version string) error {
+	if version == "" {
+		return nil
+	}
+
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -257,6 +285,63 @@ func installPackagesFromBunchfile(b *BunchFile) error {
 	return nil
 }
 
-func installPackages(packages []string, installGlobally bool) error {
+func installPackages(packageStrings []string, installGlobally bool) error {
+	if !installGlobally {
+		err := setVendorEnv()
+		if err != nil {
+			return err
+		}
+	}
+
+	packages := make([]Package, len(packageStrings))
+	for i, packString := range packageStrings {
+		parts := strings.Split(packString, "@")
+		pack := Package{}
+
+		if len(parts) == 2 {
+			pack.Repo = parts[0]
+			pack.Version = parts[1]
+		} else {
+			pack.Repo = parts[0]
+		}
+
+		packages[i] = pack
+	}
+
+	for _, pack := range packages {
+		err := fetchPackage(pack.Repo)
+		if err != nil {
+			return err
+		}
+
+		err = fetchPackageDependencies(pack.Repo)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("")
+	}
+
+	for _, pack := range packages {
+		fmt.Printf("installing %s ...\n", pack.Repo)
+
+		err := setPackageVersion(pack.Repo, pack.Version)
+		if err != nil {
+			return err
+		}
+
+		err = buildPackage(pack.Repo)
+		if err != nil {
+			return err
+		}
+
+		err = installPackage(pack.Repo)
+		if err != nil {
+			return err
+		}
+
+		fmt.Print(color.GreenString("\rsuccessfully installed %s                 \n\n", pack.Repo))
+	}
+
 	return nil
 }
