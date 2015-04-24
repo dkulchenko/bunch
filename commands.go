@@ -23,13 +23,19 @@ func setupVendoring() error {
 	return nil
 }
 
-func installCommand(c *cli.Context) {
+func installCommand(c *cli.Context, forceUpdate bool) {
 	// bunch install
 	// bunch install github.com/abc/xyz
 	// bunch install github.com/abc/xyz github.com/abc/def
 	// bunch install github.com/abc/xyz --save
 	// bunch install github.com/abc/xyz -g
 	// bunch install abc/xyz # github shorthand
+
+	// bunch update
+	// bunch update github.com/abc/xyz
+	// bunch update github.com/abc/xyz github.com/abc/def
+	// bunch update github.com/abc/xyz --save
+	// bunch update github.com/abc/xyz -g
 
 	packages := c.Args()
 
@@ -44,7 +50,7 @@ func installCommand(c *cli.Context) {
 			log.Fatalf("unable to read Bunchfile: %s", err)
 		}
 
-		err = installPackagesFromBunchfile(bunch)
+		err = installPackagesFromBunchfile(bunch, forceUpdate)
 
 		if err != nil {
 			log.Fatalf("failed installing packages: %s", err)
@@ -63,7 +69,7 @@ func installCommand(c *cli.Context) {
 			bunch = createBunchfile()
 		}
 
-		err := installPackages(packages, global)
+		err := installPackagesFromRepoStrings(packages, global, forceUpdate)
 		if err != nil {
 			log.Fatalf("failed installing packages: %s", err)
 		}
@@ -83,14 +89,6 @@ func installCommand(c *cli.Context) {
 			}
 		}
 	}
-}
-
-func updateCommand(c *cli.Context) {
-	// bunch update
-	// bunch update github.com/abc/xyz
-	// bunch update github.com/abc/xyz github.com/abc/def
-	// bunch update github.com/abc/xyz --save
-	// bunch update github.com/abc/xyz -g
 }
 
 func uninstallCommand(c *cli.Context) {
@@ -116,13 +114,13 @@ func lockCommand(c *cli.Context) {
 }
 
 func rebuildCommand(c *cli.Context) {
-	// bunch rebuild
+	// bunch rebuild (also works as restore)
 }
 
 func generateCommand(c *cli.Context) {
 	// bunch generate
 
-	// use go list --json
+	// use go list --json (scan for deps with more than 1-2 / parts)
 }
 
 func goCommand(c *cli.Context) {

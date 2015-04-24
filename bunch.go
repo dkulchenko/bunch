@@ -9,6 +9,8 @@ import (
 var InitialPath string
 var InitialGoPath string
 
+var Verbose bool
+
 func main() {
 	InitialPath = os.Getenv("PATH")
 	InitialGoPath = os.Getenv("GOPATH")
@@ -18,6 +20,19 @@ func main() {
 	app.Usage = "npm-like tool for managing Go dependencies"
 	app.Version = "0.0.1"
 	app.Authors = []cli.Author{cli.Author{Name: "Daniil Kulchenko", Email: "daniil@kulchenko.com"}}
+
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  "verbose",
+			Usage: "output more information",
+		},
+	}
+
+	app.Before = func(context *cli.Context) error {
+		Verbose = context.GlobalBool("verbose")
+
+		return nil
+	}
 
 	app.Commands = []cli.Command{
 		{
@@ -35,7 +50,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) {
-				installCommand(c)
+				installCommand(c, false)
 			},
 		},
 		{
@@ -43,7 +58,7 @@ func main() {
 			Aliases: []string{"u"},
 			Usage:   "update package(s)",
 			Action: func(c *cli.Context) {
-				updateCommand(c)
+				installCommand(c, true)
 			},
 		},
 		{
