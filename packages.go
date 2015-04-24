@@ -27,22 +27,6 @@ func pathExists(path string) (bool, error) {
 	return false, err
 }
 
-type DetectReader struct {
-	Command *exec.Cmd
-}
-
-var GoGetRequestedInput = false
-
-func (d DetectReader) Read(p []byte) (int, error) {
-	GoGetRequestedInput = true
-	err := d.Command.Process.Kill()
-	if err != nil {
-		return 0, err
-	}
-
-	return len(p), nil
-}
-
 func fetchPackage(repo string) error {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -63,21 +47,14 @@ func fetchPackage(repo string) error {
 
 			goGetCommand := []string{"go", "get", "-d", repo}
 			goGetCmd := exec.Command(goGetCommand[0], goGetCommand[1:]...)
-			goGetCmd.Stdin = DetectReader{Command: goGetCmd}
-			goGetOutput, err := goGetCmd.CombinedOutput()
+			err := goGetCmd.Run()
 
 			if Verbose {
 				s.Stop()
 			}
 
 			if err != nil {
-				if GoGetRequestedInput {
-					fmt.Printf("\rfetching %s ... %s\n", repo, color.RedString("failed"))
-					fmt.Println("go get requested credentials, make sure you spelled the package name correctly")
-					os.Exit(1)
-				} else {
-					return errors.New(fmt.Sprintf("failed cloning repo for package %s, error: %s, output: %s", repo, err, goGetOutput))
-				}
+				return errors.New(fmt.Sprintf("failed cloning repo for package %s, error: %s", repo, err))
 			} else {
 				if Verbose {
 					fmt.Printf("\rfetching %s ... %s\n", repo, color.GreenString("done"))
