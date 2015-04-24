@@ -6,7 +6,13 @@ import (
 	"github.com/codegangsta/cli"
 )
 
+var InitialPath string
+var InitialGoPath string
+
 func main() {
+	InitialPath = os.Getenv("PATH")
+	InitialGoPath = os.Getenv("GOPATH")
+
 	app := cli.NewApp()
 	app.Name = "bunch"
 	app.Usage = "npm-like tool for managing Go dependencies"
@@ -94,22 +100,25 @@ func main() {
 			},
 		},
 		{
-			Name:  "go",
-			Usage: "run a Go command within the vendor environment (e.g. bunch go fmt)",
+			Name:            "go",
+			Usage:           "run a Go command within the vendor environment (e.g. bunch go fmt)",
+			SkipFlagParsing: true,
 			Action: func(c *cli.Context) {
 				goCommand(c)
 			},
 		},
 		{
-			Name:  "exec",
-			Usage: "run any command within the vendor environment (e.g. bunch exec make)",
+			Name:            "exec",
+			Usage:           "run any command within the vendor environment (e.g. bunch exec make)",
+			SkipFlagParsing: true,
 			Action: func(c *cli.Context) {
 				execCommand(c)
 			},
 		},
 		{
-			Name:  "shell",
-			Usage: "start a shell within the vendor environment",
+			Name:            "shell",
+			Usage:           "start a shell within the vendor environment",
+			SkipFlagParsing: true,
 			Action: func(c *cli.Context) {
 				shellCommand(c)
 			},
@@ -124,52 +133,4 @@ func main() {
 	}
 
 	app.Run(os.Args)
-}
-
-func installCommand(c *cli.Context) {
-
-}
-
-func updateCommand(c *cli.Context) {
-
-}
-
-func uninstallCommand(c *cli.Context) {
-
-}
-
-func pruneCommand(c *cli.Context) {
-
-}
-
-func outdatedCommand(c *cli.Context) {
-
-}
-
-func lockCommand(c *cli.Context) {
-
-}
-
-func rebuildCommand(c *cli.Context) {
-
-}
-
-func generateCommand(c *cli.Context) {
-
-}
-
-func goCommand(c *cli.Context) {
-
-}
-
-func execCommand(c *cli.Context) {
-
-}
-
-func shellCommand(c *cli.Context) {
-
-}
-
-func shimCommand(c *cli.Context) {
-
 }

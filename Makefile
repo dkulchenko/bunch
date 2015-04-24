@@ -1,6 +1,6 @@
 .PHONY: build
 
-all: clean build
+all: build
 
 bootstrap:
 	@gox -build-toolchain
@@ -10,7 +10,11 @@ setup:
 	go get -u github.com/mitchellh/gox
 
 build:
-	@go build -o bin/bunch . 
+	@bunch go build -o bin/bunch . 
+
+bootstrap-build:
+	@go get github.com/dkulchenko/bunch
+	@go build -o bin/bunch .
 
 run:
 	@bin/bunch
