@@ -60,7 +60,10 @@ func installCommand(c *cli.Context) {
 		if save {
 			for _, pack := range packages {
 				err := bunch.AddPackage(pack)
-				log.Fatalf("failed adding package %s to save list: %s", pack, err)
+
+				if err != nil {
+					log.Fatalf("failed adding package %s to save list: %s", pack, err)
+				}
 			}
 
 			err = bunch.Save()

@@ -285,6 +285,20 @@ func installPackagesFromBunchfile(b *BunchFile) error {
 	return nil
 }
 
+func parsePackage(packString string) Package {
+	parts := strings.Split(packString, "@")
+	pack := Package{}
+
+	if len(parts) == 2 {
+		pack.Repo = parts[0]
+		pack.Version = parts[1]
+	} else {
+		pack.Repo = parts[0]
+	}
+
+	return pack
+}
+
 func installPackages(packageStrings []string, installGlobally bool) error {
 	if !installGlobally {
 		err := setVendorEnv()
@@ -295,17 +309,7 @@ func installPackages(packageStrings []string, installGlobally bool) error {
 
 	packages := make([]Package, len(packageStrings))
 	for i, packString := range packageStrings {
-		parts := strings.Split(packString, "@")
-		pack := Package{}
-
-		if len(parts) == 2 {
-			pack.Repo = parts[0]
-			pack.Version = parts[1]
-		} else {
-			pack.Repo = parts[0]
-		}
-
-		packages[i] = pack
+		packages[i] = parsePackage(packString)
 	}
 
 	for _, pack := range packages {

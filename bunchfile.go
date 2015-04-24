@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"regexp"
 	"strings"
@@ -18,12 +19,64 @@ type BunchFile struct {
 }
 
 var commentStripRegexp = regexp.MustCompile(`#.*`)
+var versionSwapRegexp = regexp.MustCompile(`^(\S+)\s*(\S*)`)
 
-func (b *BunchFile) AddPackage(pack string) error {
+func (b *BunchFile) RawIndex(repo string) (int, bool) {
+	for i, packString := range b.Raw {
+		parts := strings.Fields(packString)
+
+		if len(parts) < 1 {
+			continue
+		}
+
+		if parts[0] == repo {
+			return i, true
+		}
+	}
+
+	return 0, false
+}
+
+func (b *BunchFile) PackageIndex(repo string) (int, bool) {
+	for i, pack := range b.Packages {
+		if pack.Repo == repo {
+			return i, true
+		}
+	}
+
+	return 0, false
+}
+
+func (b *BunchFile) AddPackage(packString string) error {
+	pack := parsePackage(packString)
+
+	index, present := b.RawIndex(pack.Repo)
+
+	if present {
+		packIndex, _ := b.PackageIndex(pack.Repo)
+		b.Packages[packIndex] = pack
+
+		initialLine := b.Raw[index]
+
+		replacementString := fmt.Sprintf("$1 %s", pack.Version)
+		newLine := versionSwapRegexp.ReplaceAllString(initialLine, replacementString)
+
+		b.Raw[index] = newLine
+	} else {
+		b.Packages = append(b.Packages, pack)
+		b.Raw = append(b.Raw, fmt.Sprintf("%s %s", pack.Repo, pack.Version))
+	}
+
 	return nil
 }
 
 func (b *BunchFile) Save() error {
+	err := ioutil.WriteFile("Bunchfile", []byte(strings.Join(b.Raw, "\n")), 0644)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -35,7 +88,7 @@ func readBunchfile() (*BunchFile, error) {
 	}
 
 	bunch := BunchFile{
-		Raw: strings.Split(string(bunchbytes), "\n"),
+		Raw: strings.Split(strings.TrimSpace(string(bunchbytes)), "\n"),
 	}
 
 	for _, line := range bunch.Raw {
