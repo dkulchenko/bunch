@@ -434,6 +434,8 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 		}
 	}
 
+	gopath := os.Getenv("GOPATH")
+
 	anyNeededUpdate := false
 	packageNeedsUpdate := make(map[string]bool)
 
@@ -446,6 +448,30 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 		if needsUpdate {
 			packageNeedsUpdate[pack.Repo] = true
 			anyNeededUpdate = true
+		}
+
+		if pack.IsLink {
+			repoPath := path.Join(gopath, "src", pack.Repo)
+
+			if exists, _ := pathExists(repoPath); !exists {
+				err = os.MkdirAll(filepath.Dir(repoPath), 0755)
+				if err != nil {
+					return err
+				}
+
+				err = os.Symlink(pack.LinkTarget, path.Join(gopath, "src", pack.Repo))
+				if err != nil {
+					return err
+				}
+
+				if !pack.IsSelf {
+					fmt.Printf("\rsetting up local package %s ... %s      \n", pack.Repo, color.GreenString("done"))
+				} else {
+					fmt.Printf("\rsetting up %s link ... %s      \n", pack.Repo, color.GreenString("done"))
+				}
+			}
+
+			continue
 		}
 
 		if (needsUpdate || forceUpdate) && checkUpstream {
@@ -491,19 +517,23 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 				version = pack.LockedVersion
 			}
 
-			err := setPackageVersion(pack.Repo, version)
-			if err != nil {
-				return err
+			if !pack.IsLink {
+				err := setPackageVersion(pack.Repo, version)
+				if err != nil {
+					return err
+				}
 			}
 
-			err = buildPackage(pack.Repo)
-			if err != nil {
-				return err
-			}
+			if !pack.IsSelf {
+				err := buildPackage(pack.Repo)
+				if err != nil {
+					return err
+				}
 
-			err = installPackage(pack.Repo)
-			if err != nil {
-				return err
+				err = installPackage(pack.Repo)
+				if err != nil {
+					return err
+				}
 			}
 
 			if Verbose {
@@ -783,6 +813,10 @@ func commitsPlural(n int) string {
 
 func checkOutdatedPackages(b *BunchFile) error {
 	for _, pack := range b.Packages {
+		if pack.IsSelf {
+			continue
+		}
+
 		fmt.Printf("package %s ... ", pack.Repo)
 
 		err := fetchPackage(pack.Repo)
@@ -821,6 +855,10 @@ func lockPackages(b *BunchFile) error {
 	lockList := make(map[string]string)
 
 	for _, pack := range b.Packages {
+		if pack.IsLink {
+			continue
+		}
+
 		_, recency, err := checkPackageRecency(pack)
 		if err != nil {
 			return err

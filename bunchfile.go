@@ -17,6 +17,10 @@ type Package struct {
 	Repo          string
 	Version       string
 	LockedVersion string
+
+	IsSelf     bool
+	IsLink     bool
+	LinkTarget string
 }
 
 type BunchFile struct {
@@ -149,26 +153,46 @@ func readBunchfile() (*BunchFile, error) {
 			continue
 		}
 
-		var repo, version string
+		pack := Package{}
 
 		packageInfo := strings.Fields(line)
 
 		if len(packageInfo) < 1 {
 			continue
 		} else {
-			repo = packageInfo[0]
+			pack.Repo = packageInfo[0]
 		}
 
 		if len(packageInfo) >= 2 {
-			version = packageInfo[1]
+			pack.Version = packageInfo[1]
 		}
 
-		var lockedVersion string
-		if lockedCommits[repo] != "" {
-			lockedVersion = lockedCommits[repo]
+		if strings.HasPrefix(pack.Version, "!link") || strings.HasPrefix(pack.Version, "!self") {
+			if strings.HasPrefix(pack.Version, "!self") {
+				pack.IsSelf = true
+			}
+
+			pack.IsLink = true
+
+			linkList := strings.Split(pack.Version, ":")
+
+			if len(linkList) == 2 {
+				pack.LinkTarget = linkList[1]
+			} else {
+				wd, err := os.Getwd()
+				if err != nil {
+					return &BunchFile{}, err
+				}
+
+				pack.LinkTarget = wd
+			}
 		}
 
-		bunch.Packages = append(bunch.Packages, Package{Repo: repo, Version: version, LockedVersion: lockedVersion})
+		if lockedCommits[pack.Repo] != "" {
+			pack.LockedVersion = lockedCommits[pack.Repo]
+		}
+
+		bunch.Packages = append(bunch.Packages, pack)
 	}
 
 	return &bunch, nil
