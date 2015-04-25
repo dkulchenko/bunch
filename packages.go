@@ -27,6 +27,32 @@ func pathExists(path string) (bool, error) {
 	return false, errors.Trace(err)
 }
 
+func getPackageRootDir(repo string) (string, error) { // move backwards through the package name, looking for a .git/.hg dir to find the package "root"
+	gopath := os.Getenv("GOPATH")
+	resultPath := path.Join(gopath, "src", repo)
+
+	parts := strings.Split(repo, "/")
+	for i := len(parts) - 1; i >= 0; i-- {
+		repoPortion := path.Join(parts[:i]...)
+		candidatePath := path.Join(gopath, "src", repoPortion)
+
+		gitDir := path.Join(candidatePath, ".git")
+		hgDir := path.Join(candidatePath, ".hg")
+
+		if exists, _ := pathExists(gitDir); exists {
+			resultPath = candidatePath
+			break
+		}
+
+		if exists, _ := pathExists(hgDir); exists {
+			resultPath = candidatePath
+			break
+		}
+	}
+
+	return resultPath, nil
+}
+
 func fetchPackage(repo string) error {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -81,6 +107,11 @@ func fetchPackage(repo string) error {
 		s.Prefix = fmt.Sprintf("refreshing %s ", repo)
 		s.Color("green")
 		s.Start()
+	}
+
+	packageDir, err = getPackageRootDir(repo)
+	if err != nil {
+		return errors.Trace(err)
 	}
 
 	var refreshCommand []string
@@ -340,6 +371,11 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 
 	if exists, _ := pathExists(pkgPath); !exists {
 		return true, NilInfo, nil
+	}
+
+	packageDir, err = getPackageRootDir(repo)
+	if err != nil {
+		return false, NilInfo, errors.Trace(err)
 	}
 
 	defer func() {
@@ -869,10 +905,14 @@ func checkOutdatedPackages(b *BunchFile) error {
 				}
 			}
 		} else {
-			if pack.LockedVersion == "" {
-				fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.RedString("outdated"), commitsPlural(recency.InstalledDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+			if recency.InstalledDiffCount == 0 {
+				fmt.Printf("\rpackage %s ... %s\n", pack.Repo, color.GreenString("up to date"))
 			} else {
-				fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.YellowString("locked, but outdated"), commitsPlural(recency.InstalledDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+				if pack.LockedVersion == "" {
+					fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.RedString("outdated"), commitsPlural(recency.InstalledDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+				} else {
+					fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.YellowString("locked, but outdated"), commitsPlural(recency.InstalledDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+				}
 			}
 		}
 	}
