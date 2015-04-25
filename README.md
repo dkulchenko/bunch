@@ -27,15 +27,21 @@ See this [repo's Bunchfile](https://github.com/dkulchenko/bunch/blob/master/Bunc
 ```
 github.com/this/repo !self
 
+# comments are fun!
 github.com/another/package
 github.com/another/package2 v2 # can be a branch, tag, or commit
-github.com/another/package3 >= 1.0
-github.com/another/package4 a2b5va78d
+github.com/another/package3 a2b5va78d
+
+github.com/another/package4 >= 1.0
+github.com/another/package5 ~> 1.4.x
+github.com/another/package6 > 1.0, < 1.4
 ```
 
 ## Usage
 
-Generate a Bunchfile based on your existing imports to get you started:
+### Managing packages
+
+(optional) Generate a Bunchfile based on your existing imports to get you started:
 
 ```
 bunch generate
@@ -93,6 +99,8 @@ Rebuild (recompile) all packages:
 bunch rebuild
 ```
 
+### Using the vendored environment
+
 Run commands/builds within the vendored environment (sets $GOPATH and $PATH):
 
 ```
@@ -102,7 +110,7 @@ bunch exec make
 bunch shell
 ```
 
-Add this to your .bash_profile to make the `go` command automagically be bunch-aware (e.g. go build will automatically have the correct $GOPATH set if a Bunchfile is present): 
+You can also add this to your .bash_profile to make the `go` command automagically be bunch-aware (e.g. go build will automatically have the correct $GOPATH set if a Bunchfile is present): 
 
 ```
 if which bunch > /dev/null; then eval "$(bunch shim -)"; fi
