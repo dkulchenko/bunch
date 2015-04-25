@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/codegangsta/cli"
+	"github.com/juju/errors"
 )
 
 func setupVendoring() error {
@@ -19,7 +20,7 @@ func setupVendoring() error {
 		err := os.MkdirAll(vendorDir, 0755)
 
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 	}
 
@@ -56,7 +57,7 @@ func installCommand(c *cli.Context, forceUpdate bool, checkUpstream bool) {
 		err = installPackagesFromBunchfile(bunch, forceUpdate, checkUpstream)
 
 		if err != nil {
-			log.Fatalf("failed installing packages: %s", err)
+			log.Fatalf("failed installing packages: %s %s", err, err.(*errors.Err).StackTrace())
 		}
 	} else {
 		global := c.Bool("g")

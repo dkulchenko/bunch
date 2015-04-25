@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"os"
 	"path"
+
+	"github.com/juju/errors"
 )
 
 func setVendorEnv() error {
 	dir, err := os.Getwd()
 
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	newGoPath := path.Join(dir, ".vendor")
@@ -18,12 +20,12 @@ func setVendorEnv() error {
 
 	err = os.Setenv("PATH", newPath)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	err = os.Setenv("GOPATH", newGoPath)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	return nil
@@ -32,12 +34,12 @@ func setVendorEnv() error {
 func unsetVendorEnv() error {
 	err := os.Setenv("PATH", InitialPath)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	err = os.Setenv("GOPATH", InitialGoPath)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	return nil

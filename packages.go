@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
+	"github.com/juju/errors"
 )
 
 func pathExists(path string) (bool, error) {
@@ -30,7 +30,7 @@ func pathExists(path string) (bool, error) {
 func fetchPackage(repo string) error {
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	packageDir := path.Join(wd, ".vendor", "src", repo)
@@ -71,7 +71,7 @@ func fetchPackage(repo string) error {
 
 	err = os.Chdir(packageDir)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	var s *spinner.Spinner
@@ -114,7 +114,7 @@ func fetchPackage(repo string) error {
 func fetchPackageDependencies(repo string) error {
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	packageDir := path.Join(wd, ".vendor", "src", repo)
@@ -125,7 +125,7 @@ func fetchPackageDependencies(repo string) error {
 
 	err = os.Chdir(packageDir)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	var s *spinner.Spinner
@@ -155,7 +155,7 @@ func fetchPackageDependencies(repo string) error {
 func buildPackage(repo string) error {
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	packageDir := path.Join(wd, ".vendor", "src", repo)
@@ -166,7 +166,7 @@ func buildPackage(repo string) error {
 
 	err = os.Chdir(packageDir)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	var s *spinner.Spinner
@@ -196,7 +196,7 @@ func buildPackage(repo string) error {
 func installPackage(repo string) error {
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	packageDir := path.Join(wd, ".vendor", "src", repo)
@@ -207,7 +207,7 @@ func installPackage(repo string) error {
 
 	err = os.Chdir(packageDir)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	var s *spinner.Spinner
@@ -234,14 +234,14 @@ func installPackage(repo string) error {
 	return nil
 }
 
-func setPackageVersion(repo string, version string) error {
+func setPackageVersion(repo string, version string, humanVersion string) error {
 	if version == "" {
 		return nil
 	}
 
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	packageDir := path.Join(wd, ".vendor", "src", repo)
@@ -252,14 +252,19 @@ func setPackageVersion(repo string, version string) error {
 
 	err = os.Chdir(packageDir)
 	if err != nil {
-		return err
+		return errors.Trace(err)
+	}
+
+	if exists, _ := pathExists(".git"); !exists {
+		fmt.Printf("  - setting version of %s to %s (resolved as %s) ... %s\n", repo, humanVersion, version, color.GreenString("skipped, not git"))
+		return nil // for now, we only know git
 	}
 
 	var s *spinner.Spinner
 
 	if Verbose {
 		s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
-		s.Prefix = fmt.Sprintf("  - setting version of %s to %s ", repo, version)
+		s.Prefix = fmt.Sprintf("  - setting version of %s to %s (resolved as %s) ", repo, humanVersion, version)
 		s.Color("green")
 		s.Start()
 	}
@@ -269,7 +274,7 @@ func setPackageVersion(repo string, version string) error {
 
 	if Verbose {
 		s.Stop()
-		fmt.Printf("\r  - setting version of %s to %s ... %s\n", repo, version, color.GreenString("done"))
+		fmt.Printf("\r  - setting version of %s to %s (resolved as %s) ... %s\n", repo, humanVersion, version, color.GreenString("done"))
 	}
 
 	if err != nil {
@@ -300,18 +305,18 @@ type PackageRecencyInfo struct {
 }
 
 func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bool = needsUpdate
-	repo := pack.Repo
-	version := pack.Version
-
 	NilInfo := PackageRecencyInfo{}
 
-	wd, err := os.Getwd()
+	repo := pack.Repo
+	version, err := getLatestVersionMatchingPattern(pack.Repo, pack.Version)
+
 	if err != nil {
 		return false, NilInfo, err
 	}
 
-	if version == "" {
-		version = "master"
+	wd, err := os.Getwd()
+	if err != nil {
+		return false, NilInfo, err
 	}
 
 	packageDir := path.Join(wd, ".vendor", "src", repo)
@@ -430,7 +435,7 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 	if !installGlobally {
 		err := setVendorEnv()
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 	}
 
@@ -446,12 +451,12 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 			if exists, _ := pathExists(repoPath); !exists {
 				err := os.MkdirAll(filepath.Dir(repoPath), 0755)
 				if err != nil {
-					return err
+					return errors.Trace(err)
 				}
 
 				err = os.Symlink(pack.LinkTarget, path.Join(gopath, "src", pack.Repo))
 				if err != nil {
-					return err
+					return errors.Trace(err)
 				}
 
 				if !pack.IsSelf {
@@ -466,7 +471,7 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 
 		needsUpdate, _, err := checkPackageRecency(pack)
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		if needsUpdate {
@@ -485,12 +490,12 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 
 			err = fetchPackage(pack.Repo)
 			if err != nil {
-				return err
+				return errors.Trace(err)
 			}
 
 			err = fetchPackageDependencies(pack.Repo)
 			if err != nil {
-				return err
+				return errors.Trace(err)
 			}
 
 			if Verbose {
@@ -512,27 +517,31 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 				fmt.Printf("installing %s ...", pack.Repo)
 			}
 
-			version := pack.Version
+			version, err := getLatestVersionMatchingPattern(pack.Repo, pack.Version)
+			if err != nil {
+				return errors.Trace(err)
+			}
+
 			if pack.LockedVersion != "" && !forceUpdate {
 				version = pack.LockedVersion
 			}
 
 			if !pack.IsLink {
-				err := setPackageVersion(pack.Repo, version)
+				err := setPackageVersion(pack.Repo, version, pack.Version)
 				if err != nil {
-					return err
+					return errors.Trace(err)
 				}
 			}
 
 			if !pack.IsSelf {
 				err := buildPackage(pack.Repo)
 				if err != nil {
-					return err
+					return errors.Trace(err)
 				}
 
 				err = installPackage(pack.Repo)
 				if err != nil {
-					return err
+					return errors.Trace(err)
 				}
 			}
 
@@ -576,14 +585,14 @@ func cleanEmpties(emptyPath string) error {
 	if empty, _ := isEmptyDir(higherPath); empty {
 		err := os.Remove(higherPath)
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		highestPath := filepath.Dir(higherPath)
 		if empty, _ := isEmptyDir(highestPath); empty {
 			err := os.Remove(highestPath)
 			if err != nil {
-				return err
+				return errors.Trace(err)
 			}
 		}
 	}
@@ -598,13 +607,13 @@ func removePackage(pack string) error {
 	if exists, _ := pathExists(srcPath); exists {
 		err := os.RemoveAll(srcPath)
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 	}
 
 	err := cleanEmpties(srcPath)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	archPath := fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH)
@@ -612,13 +621,13 @@ func removePackage(pack string) error {
 	if exists, _ := pathExists(pkgPath); exists {
 		err := os.Remove(pkgPath)
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 	}
 
 	err = cleanEmpties(pkgPath)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	_, binFile := path.Split(pack)
@@ -628,7 +637,7 @@ func removePackage(pack string) error {
 		if exists, _ := pathExists(binPath); exists {
 			err := os.Remove(binPath)
 			if err != nil {
-				return err
+				return errors.Trace(err)
 			}
 		}
 	}
@@ -640,7 +649,7 @@ func removePackages(packages []string, bunch *BunchFile, removeGlobally bool) er
 	if !removeGlobally {
 		err := setVendorEnv()
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 	}
 
@@ -662,14 +671,14 @@ func removePackages(packages []string, bunch *BunchFile, removeGlobally bool) er
 		goListCommand := []string{"go", "list", "--json", pack}
 		output, err := exec.Command(goListCommand[0], goListCommand[1:]...).Output()
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		packageInfo := GoList{}
 		err = json.Unmarshal(output, &packageInfo)
 
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		removingPackage := false
@@ -709,7 +718,7 @@ func removePackages(packages []string, bunch *BunchFile, removeGlobally bool) er
 			err := removePackage(pack)
 
 			if err != nil {
-				return err
+				return errors.Trace(err)
 			}
 
 			fmt.Printf("\rremoving package %s ... %s      \n", pack, color.GreenString("done"))
@@ -722,7 +731,7 @@ func removePackages(packages []string, bunch *BunchFile, removeGlobally bool) er
 func prunePackages(bunch *BunchFile) error {
 	err := setVendorEnv()
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	gopath := os.Getenv("GOPATH")
@@ -739,14 +748,14 @@ func prunePackages(bunch *BunchFile) error {
 		goListCommand := []string{"go", "list", "--json", pack}
 		output, err := exec.Command(goListCommand[0], goListCommand[1:]...).Output()
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		packageInfo := GoList{}
 		err = json.Unmarshal(output, &packageInfo)
 
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		packagesUsed[pack] = true
@@ -761,22 +770,22 @@ func prunePackages(bunch *BunchFile) error {
 
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	err = os.Chdir(path.Join(gopath, "src"))
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	packFiles, err := filepath.Glob("*/*/*")
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	err = os.Chdir(wd)
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	for _, pack := range packFiles {
@@ -785,7 +794,7 @@ func prunePackages(bunch *BunchFile) error {
 			err := removePackage(pack)
 
 			if err != nil {
-				return err
+				return errors.Trace(err)
 			}
 
 			fmt.Printf("\rremoving package %s ... %s      \n", pack, color.GreenString("done"))
@@ -821,12 +830,12 @@ func checkOutdatedPackages(b *BunchFile) error {
 
 		err := fetchPackage(pack.Repo)
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		needsUpdate, recency, err := checkPackageRecency(pack)
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		if !needsUpdate {
@@ -861,7 +870,7 @@ func lockPackages(b *BunchFile) error {
 
 		_, recency, err := checkPackageRecency(pack)
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		lockList[pack.Repo] = recency.LatestCommit
@@ -869,11 +878,11 @@ func lockPackages(b *BunchFile) error {
 
 	jsonOut, err := json.MarshalIndent(lockList, "", "    ")
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	} else {
 		err = ioutil.WriteFile("Bunchfile.lock", jsonOut, 0644)
 		if err != nil {
-			return err
+			return errors.Trace(err)
 		}
 
 		color.Green("Bunchfile.lock generated successfully")

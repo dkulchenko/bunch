@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/juju/errors"
 )
 
 type Package struct {
@@ -29,7 +30,7 @@ type BunchFile struct {
 }
 
 var commentStripRegexp = regexp.MustCompile(`#.*`)
-var versionSwapRegexp = regexp.MustCompile(`^(\S+)\s*(\S*)`)
+var versionSwapRegexp = regexp.MustCompile(`^(\S+)\s*(.*)`)
 
 func (b *BunchFile) RawIndex(repo string) (int, bool) {
 	for i, packString := range b.Raw {
@@ -110,7 +111,7 @@ func (b *BunchFile) Save() error {
 	err := ioutil.WriteFile("Bunchfile", []byte(strings.Join(b.Raw, "\n")), 0644)
 
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	return nil
@@ -155,7 +156,7 @@ func readBunchfile() (*BunchFile, error) {
 
 		pack := Package{}
 
-		packageInfo := strings.Fields(line)
+		packageInfo := strings.SplitN(line, " ", 2)
 
 		if len(packageInfo) < 1 {
 			continue
@@ -206,14 +207,14 @@ func generateBunchfile() error {
 	goListCommand := []string{"go", "list", "--json", "."}
 	output, err := exec.Command(goListCommand[0], goListCommand[1:]...).Output()
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	packageInfo := GoList{}
 	err = json.Unmarshal(output, &packageInfo)
 
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	for _, dep := range packageInfo.Deps {
@@ -221,14 +222,14 @@ func generateBunchfile() error {
 		if exists, _ := pathExists(depPath); exists {
 			err = bunch.AddPackage(dep)
 			if err != nil {
-				return err
+				return errors.Trace(err)
 			}
 		}
 	}
 
 	err = bunch.Save()
 	if err != nil {
-		return err
+		return errors.Trace(err)
 	}
 
 	color.Green("Bunchfile generated successfully")
