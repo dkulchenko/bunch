@@ -24,7 +24,7 @@ func pathExists(path string) (bool, error) {
 	if os.IsNotExist(err) {
 		return false, nil
 	}
-	return false, err
+	return false, errors.Trace(err)
 }
 
 func fetchPackage(repo string) error {
@@ -54,7 +54,7 @@ func fetchPackage(repo string) error {
 			}
 
 			if err != nil {
-				return errors.New(fmt.Sprintf("failed cloning repo for package %s, error: %s", repo, err))
+				return errors.Annotatef(err, "failed cloning repo for package %s", repo)
 			} else {
 				if Verbose {
 					fmt.Printf("\rfetching %s ... %s\n", repo, color.GreenString("done"))
@@ -99,7 +99,7 @@ func fetchPackage(repo string) error {
 		}
 
 		if err != nil {
-			return errors.New(fmt.Sprintf("failed updating repo for package %s, error: %s, output: %s", repo, err, refreshOutput))
+			return errors.Annotatef(err, "failed updating repo for package %s, output: %s", repo, refreshOutput)
 		}
 	} else {
 		if Verbose {
@@ -146,7 +146,7 @@ func fetchPackageDependencies(repo string) error {
 	}
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("failed fetching dependencies forpackage %s, error: %s, output: %s", repo, err, goGetOutput))
+		return errors.Annotatef(err, "failed fetching dependencies forpackage %s, output: %s", repo, goGetOutput)
 	}
 
 	return nil
@@ -187,7 +187,7 @@ func buildPackage(repo string) error {
 	}
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("failed building package %s, error: %s, output: %s", repo, err, goBuildOutput))
+		return errors.Annotatef(err, "failed building package %s, error: %s, output: %s", repo, goBuildOutput)
 	}
 
 	return nil
@@ -228,7 +228,7 @@ func installPackage(repo string) error {
 	}
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("failed installing package %s, error: %s, output: %s", repo, err, goInstallOutput))
+		return errors.Annotatef(err, "failed installing package %s, error: %s, output: %s", repo, goInstallOutput)
 	}
 
 	return nil
@@ -278,7 +278,7 @@ func setPackageVersion(repo string, version string, humanVersion string) error {
 	}
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("failed setting version of package %s, error: %s, output: %s", repo, err, checkoutOutput))
+		return errors.Annotatef(err, "failed setting version of package %s, error: %s, output: %s", repo, checkoutOutput)
 	}
 
 	return nil
@@ -311,12 +311,12 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 	version, err := getLatestVersionMatchingPattern(pack.Repo, pack.Version)
 
 	if err != nil {
-		return false, NilInfo, err
+		return false, NilInfo, errors.Trace(err)
 	}
 
 	wd, err := os.Getwd()
 	if err != nil {
-		return false, NilInfo, err
+		return false, NilInfo, errors.Trace(err)
 	}
 
 	packageDir := path.Join(wd, ".vendor", "src", repo)
@@ -334,7 +334,7 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 
 	err = os.Chdir(packageDir)
 	if err != nil {
-		return false, NilInfo, err
+		return false, NilInfo, errors.Trace(err)
 	}
 
 	if exists, _ := pathExists(".git"); !exists {
@@ -348,17 +348,17 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 
 		getVersionOutput, err := exec.Command(getVersionCommand[0], getVersionCommand[1:]...).Output()
 		if err != nil {
-			return false, NilInfo, err
+			return false, NilInfo, errors.Trace(err)
 		}
 
 		getUpstreamVersionOutput, err := exec.Command(getUpstreamVersionCommand[0], getUpstreamVersionCommand[1:]...).Output()
 		if err != nil {
-			return false, NilInfo, err
+			return false, NilInfo, errors.Trace(err)
 		}
 
 		getHEADOutput, err := exec.Command(getHEADCommand[0], getHEADCommand[1:]...).Output()
 		if err != nil {
-			return false, NilInfo, err
+			return false, NilInfo, errors.Trace(err)
 		}
 
 		upstreamDiffCount := 0
@@ -575,7 +575,7 @@ type GoList struct {
 func isEmptyDir(name string) (bool, error) {
 	entries, err := ioutil.ReadDir(name)
 	if err != nil {
-		return false, err
+		return false, errors.Trace(err)
 	}
 	return len(entries) == 0, nil
 }

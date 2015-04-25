@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	version "github.com/hashicorp/go-version"
+	"github.com/juju/errors"
 )
 
 func getLatestVersionMatchingPattern(repo string, versionPattern string) (string, error) {
@@ -21,12 +22,12 @@ func getLatestVersionMatchingPattern(repo string, versionPattern string) (string
 
 	wd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return "", errors.Trace(err)
 	}
 
 	err = os.Chdir(repoPath)
 	if err != nil {
-		return "", err
+		return "", errors.Trace(err)
 	}
 
 	defer func() {
@@ -43,7 +44,7 @@ func getLatestVersionMatchingPattern(repo string, versionPattern string) (string
 
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); !ok {
-			return "", err
+			return "", errors.Trace(err)
 		}
 	}
 
@@ -56,7 +57,7 @@ func getLatestVersionMatchingPattern(repo string, versionPattern string) (string
 	// second, try parsing it
 	tagListB, err := exec.Command("git", "tag").Output()
 	if err != nil {
-		return "", err
+		return "", errors.Trace(err)
 	}
 
 	versionToTag := make(map[*version.Version]string)
@@ -83,7 +84,7 @@ func getLatestVersionMatchingPattern(repo string, versionPattern string) (string
 
 	constraints, err := version.NewConstraint(versionPattern)
 	if err != nil {
-		return "", err
+		return "", errors.Trace(err)
 	}
 
 	var resultVersion string
@@ -102,7 +103,7 @@ func getLatestVersionMatchingPattern(repo string, versionPattern string) (string
 	output, err = exec.Command(gitResolveCommand[0], gitResolveCommand[1:]...).Output()
 
 	if err != nil {
-		return "", err
+		return "", errors.Trace(err)
 	} else {
 		return strings.TrimSpace(string(output)), nil
 	}

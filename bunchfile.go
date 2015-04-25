@@ -125,7 +125,7 @@ func readBunchfile() (*BunchFile, error) {
 	bunchbytes, err := ioutil.ReadFile("Bunchfile")
 
 	if err != nil {
-		return &BunchFile{}, err
+		return &BunchFile{}, errors.Trace(err)
 	}
 
 	bunch := BunchFile{
@@ -137,12 +137,12 @@ func readBunchfile() (*BunchFile, error) {
 	if exists, _ := pathExists("Bunchfile.lock"); exists {
 		lockBytes, err := ioutil.ReadFile("Bunchfile.lock")
 		if err != nil {
-			return &BunchFile{}, err
+			return &BunchFile{}, errors.Trace(err)
 		}
 
 		err = json.Unmarshal(lockBytes, &lockedCommits)
 		if err != nil {
-			return &BunchFile{}, err
+			return &BunchFile{}, errors.Trace(err)
 		}
 	}
 
@@ -182,7 +182,7 @@ func readBunchfile() (*BunchFile, error) {
 			} else {
 				wd, err := os.Getwd()
 				if err != nil {
-					return &BunchFile{}, err
+					return &BunchFile{}, errors.Trace(err)
 				}
 
 				pack.LinkTarget = wd
