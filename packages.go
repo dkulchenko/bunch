@@ -440,21 +440,11 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 	packageNeedsUpdate := make(map[string]bool)
 
 	for _, pack := range packages {
-		needsUpdate, _, err := checkPackageRecency(pack)
-		if err != nil {
-			return err
-		}
-
-		if needsUpdate {
-			packageNeedsUpdate[pack.Repo] = true
-			anyNeededUpdate = true
-		}
-
 		if pack.IsLink {
 			repoPath := path.Join(gopath, "src", pack.Repo)
 
 			if exists, _ := pathExists(repoPath); !exists {
-				err = os.MkdirAll(filepath.Dir(repoPath), 0755)
+				err := os.MkdirAll(filepath.Dir(repoPath), 0755)
 				if err != nil {
 					return err
 				}
@@ -472,6 +462,16 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 			}
 
 			continue
+		}
+
+		needsUpdate, _, err := checkPackageRecency(pack)
+		if err != nil {
+			return err
+		}
+
+		if needsUpdate {
+			packageNeedsUpdate[pack.Repo] = true
+			anyNeededUpdate = true
 		}
 
 		if (needsUpdate || forceUpdate) && checkUpstream {
