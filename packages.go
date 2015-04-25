@@ -96,6 +96,11 @@ func fetchPackage(repo string) error {
 		_ = os.Chdir(wd)
 	}()
 
+	packageDir, err = getPackageRootDir(repo)
+	if err != nil {
+		return errors.Trace(err)
+	}
+
 	err = os.Chdir(packageDir)
 	if err != nil {
 		return errors.Trace(err)
@@ -107,11 +112,6 @@ func fetchPackage(repo string) error {
 		s.Prefix = fmt.Sprintf("refreshing %s ", repo)
 		s.Color("green")
 		s.Start()
-	}
-
-	packageDir, err = getPackageRootDir(repo)
-	if err != nil {
-		return errors.Trace(err)
 	}
 
 	var refreshCommand []string
@@ -362,14 +362,12 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 	pkgPath := fmt.Sprintf("%s.a", path.Join(gopath, "pkg", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), repo))
 
 	if exists, _ := pathExists(packageDir); !exists {
+		fmt.Printf("skipping, source dir %s does not exist\n", packageDir)
 		return true, NilInfo, nil
-	} else {
-		if version == "" { // if version wasn't specified and the repo exists, continue, we won't need an update
-			return false, NilInfo, nil
-		}
 	}
 
 	if exists, _ := pathExists(pkgPath); !exists {
+		fmt.Printf("skipping, package path %s does not exist\n", pkgPath)
 		return true, NilInfo, nil
 	}
 
@@ -437,7 +435,11 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 
 		if versionString != HEADString {
 			if pack.LockedVersion != HEADString {
-				return true, recencyInfo, nil
+				if version == "" {
+					return false, recencyInfo, nil
+				} else {
+					return true, recencyInfo, nil
+				}
 			} else {
 				return false, recencyInfo, nil
 			}
@@ -877,6 +879,11 @@ func commitsPlural(n int) string {
 }
 
 func checkOutdatedPackages(b *BunchFile) error {
+	err := setVendorEnv()
+	if err != nil {
+		return errors.Trace(err)
+	}
+
 	for _, pack := range b.Packages {
 		if pack.IsSelf {
 			continue
@@ -899,9 +906,9 @@ func checkOutdatedPackages(b *BunchFile) error {
 				fmt.Printf("\rpackage %s ... %s\n", pack.Repo, color.GreenString("up to date"))
 			} else {
 				if pack.LockedVersion == "" {
-					fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.YellowString("behind upstream"), commitsPlural(recency.UpstreamDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+					fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.YellowString("behind upstream"), commitsPlural(recency.UpstreamDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestUpstreamCommit))
 				} else {
-					fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.YellowString("locked, but behind upstream"), commitsPlural(recency.UpstreamDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestCommit))
+					fmt.Printf("\rpackage %s ... %s by %s, current is %6s, latest is %6s\n", pack.Repo, color.YellowString("locked, but behind upstream"), commitsPlural(recency.UpstreamDiffCount), gitShort(recency.InstalledCommit), gitShort(recency.LatestUpstreamCommit))
 				}
 			}
 		} else {

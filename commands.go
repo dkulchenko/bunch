@@ -197,7 +197,7 @@ func outdatedCommand(c *cli.Context) {
 
 	err = checkOutdatedPackages(bunch)
 	if err != nil {
-		log.Fatalf("failed checking for outdated packages: %s", err)
+		log.Fatalf("failed checking for outdated packages: %s %s", err, err.(*errors.Err).StackTrace())
 	}
 }
 

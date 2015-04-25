@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"sort"
 	"strings"
 
@@ -13,8 +12,10 @@ import (
 )
 
 func getLatestVersionMatchingPattern(repo string, versionPattern string) (string, error) {
-	gopath := os.Getenv("GOPATH")
-	repoPath := path.Join(gopath, "src", repo)
+	repoPath, err := getPackageRootDir(repo)
+	if err != nil {
+		return "", errors.Trace(err)
+	}
 
 	if exists, _ := pathExists(repoPath); !exists {
 		return versionPattern, nil
