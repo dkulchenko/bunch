@@ -328,13 +328,18 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 
 	gopath := os.Getenv("GOPATH")
 	packageDir := path.Join(gopath, "src", repo)
+	pkgPath := fmt.Sprintf("%s.a", path.Join(gopath, "pkg", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), repo))
 
 	if exists, _ := pathExists(packageDir); !exists {
 		return true, NilInfo, nil
 	} else {
-		if version == "" { // if version wasn't specified and the repo exists, continue
+		if version == "" { // if version wasn't specified and the repo exists, continue, we won't need an update
 			return false, NilInfo, nil
 		}
+	}
+
+	if exists, _ := pathExists(pkgPath); !exists {
+		return true, NilInfo, nil
 	}
 
 	defer func() {
