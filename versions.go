@@ -36,6 +36,10 @@ func getLatestVersionMatchingPattern(repo string, versionPattern string) (string
 
 	if exists, _ := pathExists(".git"); !exists {
 		return versionPattern, nil // for now, we only know git
+	} else {
+		if versionPattern == "" {
+			return "master", nil
+		}
 	}
 
 	// first, try feeding it through git to see if it's a valid rev

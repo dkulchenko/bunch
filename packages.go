@@ -256,7 +256,9 @@ func setPackageVersion(repo string, version string, humanVersion string) error {
 	}
 
 	if exists, _ := pathExists(".git"); !exists {
-		fmt.Printf("  - setting version of %s to %s (resolved as %s) ... %s\n", repo, humanVersion, version, color.GreenString("skipped, not git"))
+		if Verbose {
+			fmt.Printf("  - setting version of %s to %s (resolved as %s) ... %s\n", repo, humanVersion, version, color.GreenString("skipped, not git"))
+		}
 		return nil // for now, we only know git
 	}
 
@@ -512,14 +514,19 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 
 		if needsUpdate || forceUpdate {
 			if Verbose {
-				fmt.Printf("installing %s ...\n", pack.Repo)
+				fmt.Printf("installing %s ... \n", pack.Repo)
 			} else {
-				fmt.Printf("installing %s ...", pack.Repo)
+				fmt.Printf("installing %s ... ", pack.Repo)
 			}
 
-			version, err := getLatestVersionMatchingPattern(pack.Repo, pack.Version)
-			if err != nil {
-				return errors.Trace(err)
+			version := pack.Version
+
+			if !pack.IsLink {
+				var err error
+				version, err = getLatestVersionMatchingPattern(pack.Repo, pack.Version)
+				if err != nil {
+					return errors.Trace(err)
+				}
 			}
 
 			if pack.LockedVersion != "" && !forceUpdate {

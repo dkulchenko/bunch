@@ -69,7 +69,7 @@ bunch uninstall github.com/abc/xyz
 bunch uninstall github.com/abc/xyz --save
 ```
 
-Prune unused packages:
+Prune unused packages from vendor directory (similar to npm prune):
 
 ```
 bunch prune
@@ -81,7 +81,7 @@ List outdated packages:
 bunch outdated
 ```
 
-Lock down the commits currently in use (creates Bunchfile.lock):
+Lock down the commits currently in use (creates Bunchfile.lock; similar to npm shrinkwrap):
 
 ```
 bunch lock
