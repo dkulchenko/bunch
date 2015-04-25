@@ -108,7 +108,7 @@ func (b *BunchFile) RemovePackage(packString string) error {
 }
 
 func (b *BunchFile) Save() error {
-	err := ioutil.WriteFile("Bunchfile", []byte(strings.Join(b.Raw, "\n")), 0644)
+	err := ioutil.WriteFile("Bunchfile", []byte(strings.Join(append(b.Raw, ""), "\n")), 0644)
 
 	if err != nil {
 		return errors.Trace(err)
@@ -199,6 +199,35 @@ func readBunchfile() (*BunchFile, error) {
 	return &bunch, nil
 }
 
+func filterCommonBasePackages(depList []string, selfBase string) []string {
+	basePackages := []string{}
+
+	for i, dep1 := range depList {
+		foundPrefix := false
+
+		if strings.HasPrefix(dep1, selfBase) {
+			continue
+		}
+
+		for j, dep2 := range depList {
+			if i == j {
+				continue
+			}
+
+			if strings.HasPrefix(dep1, dep2) {
+				foundPrefix = true
+				break
+			}
+		}
+
+		if !foundPrefix {
+			basePackages = append(basePackages, dep1)
+		}
+	}
+
+	return basePackages
+}
+
 func generateBunchfile() error {
 	bunch := BunchFile{}
 
@@ -217,7 +246,12 @@ func generateBunchfile() error {
 		return errors.Trace(err)
 	}
 
-	for _, dep := range packageInfo.Deps {
+	err = bunch.AddPackage(fmt.Sprintf("%s@!self", packageInfo.ImportPath))
+	if err != nil {
+		return errors.Trace(err)
+	}
+
+	for _, dep := range filterCommonBasePackages(packageInfo.Deps, packageInfo.ImportPath) {
 		depPath := path.Join(gopath, "src", dep)
 		if exists, _ := pathExists(depPath); exists {
 			err = bunch.AddPackage(dep)

@@ -33,7 +33,8 @@ func fetchPackage(repo string) error {
 		return errors.Trace(err)
 	}
 
-	packageDir := path.Join(wd, ".vendor", "src", repo)
+	gopath := os.Getenv("GOPATH")
+	packageDir := path.Join(gopath, "src", repo)
 
 	if _, err := os.Stat(packageDir); err != nil {
 		if os.IsNotExist(err) {
@@ -117,7 +118,8 @@ func fetchPackageDependencies(repo string) error {
 		return errors.Trace(err)
 	}
 
-	packageDir := path.Join(wd, ".vendor", "src", repo)
+	gopath := os.Getenv("GOPATH")
+	packageDir := path.Join(gopath, "src", repo)
 
 	defer func() {
 		_ = os.Chdir(wd)
@@ -158,7 +160,8 @@ func buildPackage(repo string) error {
 		return errors.Trace(err)
 	}
 
-	packageDir := path.Join(wd, ".vendor", "src", repo)
+	gopath := os.Getenv("GOPATH")
+	packageDir := path.Join(gopath, "src", repo)
 
 	defer func() {
 		_ = os.Chdir(wd)
@@ -199,7 +202,8 @@ func installPackage(repo string) error {
 		return errors.Trace(err)
 	}
 
-	packageDir := path.Join(wd, ".vendor", "src", repo)
+	gopath := os.Getenv("GOPATH")
+	packageDir := path.Join(gopath, "src", repo)
 
 	defer func() {
 		_ = os.Chdir(wd)
@@ -244,7 +248,8 @@ func setPackageVersion(repo string, version string, humanVersion string) error {
 		return errors.Trace(err)
 	}
 
-	packageDir := path.Join(wd, ".vendor", "src", repo)
+	gopath := os.Getenv("GOPATH")
+	packageDir := path.Join(gopath, "src", repo)
 
 	defer func() {
 		_ = os.Chdir(wd)
@@ -321,7 +326,9 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 		return false, NilInfo, errors.Trace(err)
 	}
 
-	packageDir := path.Join(wd, ".vendor", "src", repo)
+	gopath := os.Getenv("GOPATH")
+	packageDir := path.Join(gopath, "src", repo)
+
 	if exists, _ := pathExists(packageDir); !exists {
 		return true, NilInfo, nil
 	} else {
@@ -573,10 +580,11 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 }
 
 type GoList struct {
-	Name    string
-	Doc     string
-	Imports []string
-	Deps    []string
+	Name       string
+	Doc        string
+	ImportPath string
+	Imports    []string
+	Deps       []string
 }
 
 func isEmptyDir(name string) (bool, error) {

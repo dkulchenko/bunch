@@ -63,6 +63,10 @@ func installCommand(c *cli.Context, forceUpdate bool, checkUpstream bool) {
 		global := c.Bool("g")
 		save := c.Bool("save")
 
+		if global && os.Getenv("GOPATH") == "" {
+			log.Fatalf("GOPATH must be set when -g used")
+		}
+
 		var bunch *BunchFile
 		if exists, _ := pathExists("Bunchfile"); exists {
 			bunch, err = readBunchfile()
@@ -112,6 +116,10 @@ func uninstallCommand(c *cli.Context) {
 	} else {
 		global := c.Bool("g")
 		save := c.Bool("save")
+
+		if global && os.Getenv("GOPATH") == "" {
+			log.Fatalf("GOPATH must be set when -g used")
+		}
 
 		var bunch *BunchFile
 		if exists, _ := pathExists("Bunchfile"); exists {
