@@ -3,7 +3,7 @@
 all: build
 
 test:
-	@bunch go test
+	@bunch go test -v
 
 bootstrap:
 	@gox -build-toolchain
