@@ -3,6 +3,7 @@
 An npm-like tool for easily managing Go (golang) dependencies.
 
 [![Release](https://img.shields.io/github/release/dkulchenko/bunch.svg)](https://github.com/dkulchenko/bunch/releases)
+[![Build Status](https://travis-ci.org/dkulchenko/bunch.svg?branch=master)](https://travis-ci.org/dkulchenko/bunch)
 
 ## Overview
 
