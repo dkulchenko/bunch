@@ -1,0 +1,8 @@
+language: go
+go:
+      - tip
+before_install:
+      - go get github.com/dkulchenko/bunch
+script:
+      - $HOME/gopath/bin/bunch install
+      - $HOME/gopath/bin/bunch go test
