@@ -2,6 +2,9 @@
 
 all: build
 
+test:
+	@bunch go test
+
 bootstrap:
 	@gox -build-toolchain
 
