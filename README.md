@@ -118,7 +118,9 @@ if which bunch > /dev/null; then eval "$(bunch shim -)"; fi
 
 ## Limitations
 
-For now, only Git has full support, with partial support for Mercurial. Support for Bazaar, SVN, and full Mercurial support are in progress.
+For basic operations like installing/uninstalling/updating/pruning packages, all VCSes supported by `go get` are supported by bunch (git, hg, svn, and bzr).
+
+For more advanced operations, packages using Git are fully supported. Mercurial has mostly full support (does not support version ranges in the Bunchfile). Bazaar has some support (does not support version ranges, "bunch outdated", or "bunch install" caching up-to-date packages). Subversion has rudimentary support (only install/update/uninstall/prune).
 
 ## Contribute
 
