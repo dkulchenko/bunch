@@ -35,12 +35,26 @@ func getLatestVersionMatchingPattern(repo string, versionPattern string) (string
 		_ = os.Chdir(wd)
 	}()
 
-	if exists, _ := pathExists(".git"); !exists {
-		return versionPattern, nil // for now, we only know git
+	var repoType string
+
+	if exists, _ := pathExists(".git"); exists {
+		repoType = "git"
+	} else if exists, _ := pathExists(".hg"); exists {
+		repoType = "hg"
 	} else {
-		if versionPattern == "" {
+		return versionPattern, nil
+	}
+
+	if versionPattern == "" {
+		if repoType == "git" {
 			return "master", nil
+		} else if repoType == "hg" {
+			return "tip", nil
 		}
+	}
+
+	if repoType == "hg" {
+		return versionPattern, nil
 	}
 
 	// first, try feeding it through git to see if it's a valid rev

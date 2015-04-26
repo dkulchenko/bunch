@@ -291,11 +291,16 @@ func setPackageVersion(repo string, version string, humanVersion string) error {
 		return errors.Trace(err)
 	}
 
-	if exists, _ := pathExists(".git"); !exists {
+	var checkoutCommand []string
+	if exists, _ := pathExists(".git"); exists {
+		checkoutCommand = []string{"git", "checkout", version}
+	} else if exists, _ := pathExists(".hg"); exists {
+		checkoutCommand = []string{"hg", "update", "-c", version}
+	} else {
 		if Verbose {
-			fmt.Printf("  - setting version of %s to %s (resolved as %s) ... %s\n", repo, humanVersion, version, color.GreenString("skipped, not git"))
+			fmt.Printf("  - setting version of %s to %s (resolved as %s) ... %s\n", repo, humanVersion, version, color.GreenString("skipped, could not find repo type"))
 		}
-		return nil // for now, we only know git
+		return nil
 	}
 
 	var s *spinner.Spinner
@@ -307,7 +312,6 @@ func setPackageVersion(repo string, version string, humanVersion string) error {
 		s.Start()
 	}
 
-	checkoutCommand := []string{"git", "checkout", version}
 	checkoutOutput, err := exec.Command(checkoutCommand[0], checkoutCommand[1:]...).CombinedOutput()
 
 	if Verbose {
@@ -362,12 +366,10 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 	pkgPath := fmt.Sprintf("%s.a", path.Join(gopath, "pkg", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), repo))
 
 	if exists, _ := pathExists(packageDir); !exists {
-		fmt.Printf("skipping, source dir %s does not exist\n", packageDir)
 		return true, NilInfo, nil
 	}
 
 	if exists, _ := pathExists(pkgPath); !exists {
-		fmt.Printf("skipping, package path %s does not exist\n", pkgPath)
 		return true, NilInfo, nil
 	}
 
@@ -385,67 +387,83 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 		return false, NilInfo, errors.Trace(err)
 	}
 
-	if exists, _ := pathExists(".git"); !exists {
-		return true, NilInfo, nil // if it's not git, force an update (improve this later)
+	var repoType string
+
+	if exists, _ := pathExists(".git"); exists {
+		repoType = "git"
+	} else if exists, _ := pathExists(".hg"); exists {
+		repoType = "hg"
 	} else {
-		getVersionCommand := []string{"git", "rev-parse", "-q", "--verify", version}
-		getHEADCommand := []string{"git", "rev-parse", "-q", "--verify", "HEAD"}
-		getUpstreamVersionCommand := []string{"git", "rev-parse", "-q", "--verify", "origin/master"}
-		getUpstreamDiffCommand := []string{"git", "log", "HEAD..origin/master", "--pretty=oneline"}
-		getInstalledDiffCommand := []string{"git", "log", fmt.Sprintf("HEAD..%s", version), "--pretty=oneline"}
+		return true, NilInfo, nil // if it's not git, force an update (improve this later)
+	}
 
-		getVersionOutput, err := exec.Command(getVersionCommand[0], getVersionCommand[1:]...).Output()
-		if err != nil {
-			return false, NilInfo, errors.Trace(err)
-		}
+	var getVersionCommand, getHEADCommand, getUpstreamVersionCommand, getUpstreamDiffCommand, getInstalledDiffCommand []string
 
-		getUpstreamVersionOutput, err := exec.Command(getUpstreamVersionCommand[0], getUpstreamVersionCommand[1:]...).Output()
-		if err != nil {
-			return false, NilInfo, errors.Trace(err)
-		}
+	if repoType == "git" {
+		getVersionCommand = []string{"git", "rev-parse", "-q", "--verify", version}
+		getHEADCommand = []string{"git", "rev-parse", "-q", "--verify", "HEAD"}
+		getUpstreamVersionCommand = []string{"git", "rev-parse", "-q", "--verify", "origin/master"}
+		getUpstreamDiffCommand = []string{"git", "log", "HEAD..origin/master", "--pretty=oneline"}
+		getInstalledDiffCommand = []string{"git", "log", fmt.Sprintf("HEAD..%s", version), "--pretty=oneline"}
+	} else if repoType == "hg" {
+		getVersionCommand = []string{"hg", "identify", "-ir", version}
+		getHEADCommand = []string{"hg", "identify", "-i"}
+		getUpstreamVersionCommand = []string{"hg", "identify", "-ir", "tip"} // imperfect, but there's no git equivalent to this
+		getUpstreamDiffCommand = []string{"echo"}
+		getInstalledDiffCommand = []string{"echo"} // can't really even approximate this
+	}
 
-		getHEADOutput, err := exec.Command(getHEADCommand[0], getHEADCommand[1:]...).Output()
-		if err != nil {
-			return false, NilInfo, errors.Trace(err)
-		}
+	getVersionOutput, err := exec.Command(getVersionCommand[0], getVersionCommand[1:]...).Output()
+	if err != nil {
+		return false, NilInfo, errors.Trace(err)
+	}
 
-		upstreamDiffCount := 0
-		getUpstreamDiffOutput, err := exec.Command(getUpstreamDiffCommand[0], getUpstreamDiffCommand[1:]...).CombinedOutput()
-		if err == nil {
-			upstreamDiffCount = countNonEmptyStrings(strings.Split(strings.TrimSpace(string(getUpstreamDiffOutput)), "\n"))
-		}
+	getUpstreamVersionOutput, err := exec.Command(getUpstreamVersionCommand[0], getUpstreamVersionCommand[1:]...).Output()
+	if err != nil {
+		return false, NilInfo, errors.Trace(err)
+	}
 
-		installedDiffCount := 0
-		getInstalledDiffOutput, err := exec.Command(getInstalledDiffCommand[0], getInstalledDiffCommand[1:]...).CombinedOutput()
-		if err == nil {
-			installedDiffCount = countNonEmptyStrings(strings.Split(strings.TrimSpace(string(getInstalledDiffOutput)), "\n"))
-		}
+	getHEADOutput, err := exec.Command(getHEADCommand[0], getHEADCommand[1:]...).Output()
+	if err != nil {
+		return false, NilInfo, errors.Trace(err)
+	}
 
-		versionString := strings.TrimSpace(string(getVersionOutput))
-		HEADString := strings.TrimSpace(string(getHEADOutput))
-		upstreamVersionString := strings.TrimSpace(string(getUpstreamVersionOutput))
+	upstreamDiffCount := 0
+	getUpstreamDiffOutput, err := exec.Command(getUpstreamDiffCommand[0], getUpstreamDiffCommand[1:]...).CombinedOutput()
+	if err == nil {
+		upstreamDiffCount = countNonEmptyStrings(strings.Split(strings.TrimSpace(string(getUpstreamDiffOutput)), "\n"))
+	}
 
-		recencyInfo := PackageRecencyInfo{
-			LatestCommit:         versionString,
-			LatestUpstreamCommit: upstreamVersionString,
-			InstalledCommit:      HEADString,
-			UpstreamDiffCount:    upstreamDiffCount,
-			InstalledDiffCount:   installedDiffCount,
-		}
+	installedDiffCount := 0
+	getInstalledDiffOutput, err := exec.Command(getInstalledDiffCommand[0], getInstalledDiffCommand[1:]...).CombinedOutput()
+	if err == nil {
+		installedDiffCount = countNonEmptyStrings(strings.Split(strings.TrimSpace(string(getInstalledDiffOutput)), "\n"))
+	}
 
-		if versionString != HEADString {
-			if pack.LockedVersion != HEADString {
-				if version == "" {
-					return false, recencyInfo, nil
-				} else {
-					return true, recencyInfo, nil
-				}
-			} else {
+	versionString := strings.TrimSpace(string(getVersionOutput))
+	HEADString := strings.TrimSpace(string(getHEADOutput))
+	upstreamVersionString := strings.TrimSpace(string(getUpstreamVersionOutput))
+
+	recencyInfo := PackageRecencyInfo{
+		LatestCommit:         versionString,
+		LatestUpstreamCommit: upstreamVersionString,
+		InstalledCommit:      HEADString,
+		UpstreamDiffCount:    upstreamDiffCount,
+		InstalledDiffCount:   installedDiffCount,
+	}
+
+	if versionString != HEADString {
+		if pack.LockedVersion != HEADString {
+			if version == "" {
 				return false, recencyInfo, nil
+			} else {
+				return true, recencyInfo, nil
 			}
 		} else {
 			return false, recencyInfo, nil
 		}
+	} else {
+		return false, recencyInfo, nil
 	}
 
 	return false, NilInfo, nil
