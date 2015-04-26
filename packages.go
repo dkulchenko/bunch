@@ -962,6 +962,11 @@ func checkOutdatedPackages(b *BunchFile) error {
 }
 
 func lockPackages(b *BunchFile) error {
+	err := setVendorEnv()
+	if err != nil {
+		return errors.Trace(err)
+	}
+
 	lockList := make(map[string]string)
 
 	for _, pack := range b.Packages {
