@@ -38,6 +38,7 @@ func getPackageRootDir(repo string) (string, error) { // move backwards through 
 
 		gitDir := path.Join(candidatePath, ".git")
 		hgDir := path.Join(candidatePath, ".hg")
+		bzrDir := path.Join(candidatePath, ".bzr")
 
 		if exists, _ := pathExists(gitDir); exists {
 			resultPath = candidatePath
@@ -45,6 +46,11 @@ func getPackageRootDir(repo string) (string, error) { // move backwards through 
 		}
 
 		if exists, _ := pathExists(hgDir); exists {
+			resultPath = candidatePath
+			break
+		}
+
+		if exists, _ := pathExists(bzrDir); exists {
 			resultPath = candidatePath
 			break
 		}
@@ -120,6 +126,10 @@ func fetchPackage(repo string) error {
 		refreshCommand = []string{"git", "fetch", "--all"}
 	} else if exists, _ := pathExists(path.Join(packageDir, ".hg")); exists {
 		refreshCommand = []string{"hg", "pull"}
+	} else if exists, _ := pathExists(path.Join(packageDir, ".bzr")); exists {
+		refreshCommand = []string{"bzr", "pull"}
+	} else if exists, _ := pathExists(path.Join(packageDir, ".svn")); exists {
+		refreshCommand = []string{"svn", "up"}
 	}
 
 	if len(refreshCommand) > 0 {
@@ -296,9 +306,15 @@ func setPackageVersion(repo string, version string, humanVersion string) error {
 		checkoutCommand = []string{"git", "checkout", version}
 	} else if exists, _ := pathExists(".hg"); exists {
 		checkoutCommand = []string{"hg", "update", "-c", version}
+	} else if exists, _ := pathExists(".bzr"); exists {
+		if version != "" {
+			checkoutCommand = []string{"bzr", "update", "-r", version}
+		} else {
+			checkoutCommand = []string{"bzr", "update"}
+		}
 	} else {
 		if Verbose {
-			fmt.Printf("  - setting version of %s to %s (resolved as %s) ... %s\n", repo, humanVersion, version, color.GreenString("skipped, could not find repo type"))
+			fmt.Printf("  - setting version of %s to %s (resolved as %s) ... %s\n", repo, humanVersion, version, color.GreenString("skipped, unknown repo type"))
 		}
 		return nil
 	}
@@ -394,7 +410,7 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 	} else if exists, _ := pathExists(".hg"); exists {
 		repoType = "hg"
 	} else {
-		return true, NilInfo, nil // if it's not git, force an update (improve this later)
+		return true, NilInfo, nil // force an update
 	}
 
 	var getVersionCommand, getHEADCommand, getUpstreamVersionCommand, getUpstreamDiffCommand, getInstalledDiffCommand []string

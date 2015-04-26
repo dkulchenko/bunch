@@ -41,6 +41,8 @@ func getLatestVersionMatchingPattern(repo string, versionPattern string) (string
 		repoType = "git"
 	} else if exists, _ := pathExists(".hg"); exists {
 		repoType = "hg"
+	} else if exists, _ := pathExists(".bzr"); exists {
+		repoType = "bzr"
 	} else {
 		return versionPattern, nil
 	}
@@ -50,10 +52,12 @@ func getLatestVersionMatchingPattern(repo string, versionPattern string) (string
 			return "master", nil
 		} else if repoType == "hg" {
 			return "tip", nil
+		} else if repoType == "bzr" {
+			return "", nil
 		}
 	}
 
-	if repoType == "hg" {
+	if repoType == "hg" || repoType == "bzr" {
 		return versionPattern, nil
 	}
 
