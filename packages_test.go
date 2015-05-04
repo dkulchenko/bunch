@@ -24,12 +24,17 @@ func TestCountNonEmptyString(t *testing.T) {
 func TestParsePackage(t *testing.T) {
 	pack1 := parsePackage("github.com/a/b/c")
 	pack2 := parsePackage("github.com/a/b/c@v1.2.0")
+	pack3 := parsePackage("a/b")
+	pack4 := parsePackage("gopkg.in/abc")
 
 	assert.Equal(t, pack1.Repo, "github.com/a/b/c", "package repo should equal")
 	assert.Equal(t, pack2.Repo, "github.com/a/b/c", "package repo should equal")
 
 	assert.Equal(t, pack1.Version, "", "package version should be unset")
 	assert.Equal(t, pack2.Version, "v1.2.0", "package version should be set")
+
+	assert.Equal(t, pack3.Repo, "github.com/a/b", "github shorthand should have been expanded")
+	assert.Equal(t, pack4.Repo, "gopkg.in/abc", "package containing domain should not have been expanded")
 }
 
 /*

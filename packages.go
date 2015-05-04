@@ -496,9 +496,12 @@ func parsePackage(packString string) Package {
 		pack.Repo = parts[0]
 	}
 
-	if len(strings.Split(pack.Repo, "/")) == 2 {
-		// github shorthand
-		pack.Repo = fmt.Sprintf("github.com/%s", pack.Repo)
+	repoParts := strings.Split(pack.Repo, "/")
+	if len(repoParts) == 2 {
+		if !strings.Contains(repoParts[0], ".") {
+			// github shorthand
+			pack.Repo = fmt.Sprintf("github.com/%s", pack.Repo)
+		}
 	}
 
 	return pack
