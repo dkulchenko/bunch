@@ -76,7 +76,12 @@ func (b *BunchFile) AddPackage(packString string) error {
 		b.Raw[index] = newLine
 	} else {
 		b.Packages = append(b.Packages, pack)
-		b.Raw = append(b.Raw, fmt.Sprintf("%s %s", pack.Repo, pack.Version))
+		raw := []string{pack.Repo}
+		if pack.Version != "" {
+			raw = append(raw, pack.Version)
+		}
+
+		b.Raw = append(b.Raw, strings.Join(raw, " "))
 	}
 
 	return nil
