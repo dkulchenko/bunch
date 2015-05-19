@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"time"
 
 	"github.com/codegangsta/cli"
@@ -22,9 +21,12 @@ var SpinnerInterval = 50 * time.Millisecond
 
 func main() {
 	currentExecutable, _ := osext.Executable()
-	vendoredBunchPath, err := filepath.Abs(path.Join(".vendor", "bin", "bunch"))
+	vendoredBunchPath, err := path.Join(".vendor", "bin", "bunch")
 
-	if exists, _ := pathExists(vendoredBunchPath); err == nil && exists && currentExecutable != vendoredBunchPath {
+	fi1, errStat1 := os.Stat(currentExecutable)
+	fi2, errStat2 := os.Stat(vendoredBunchPath)
+
+	if exists, _ := pathExists(vendoredBunchPath); err == nil && errStat1 == nil && errStat2 == nil && exists && os.SameFile(fi1, fi2) {
 		cmd := exec.Command(vendoredBunchPath, os.Args[1:]...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
