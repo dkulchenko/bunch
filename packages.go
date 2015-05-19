@@ -819,6 +819,16 @@ func removePackages(packages []string, bunch *BunchFile, removeGlobally bool) er
 	return nil
 }
 
+func isRootPackageUsed(packagesUsed map[string]bool, packName string) bool {
+	for pack, _ := range packagesUsed {
+		if strings.HasPrefix(pack, packName) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func prunePackages(bunch *BunchFile) error {
 	err := setVendorEnv()
 	if err != nil {
@@ -869,7 +879,22 @@ func prunePackages(bunch *BunchFile) error {
 		return errors.Trace(err)
 	}
 
-	packFiles, err := filepath.Glob("*/*/*")
+	packFiles := []string{}
+	err = filepath.Walk(".", func(packPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		gitExists, _ := pathExists(path.Join(packPath, ".git"))
+		hgExists, _ := pathExists(path.Join(packPath, ".hg"))
+		bzrExists, _ := pathExists(path.Join(packPath, ".bzr"))
+
+		if gitExists || hgExists || bzrExists {
+			packFiles = append(packFiles, packPath)
+		}
+
+		return nil
+	})
 	if err != nil {
 		return errors.Trace(err)
 	}
@@ -880,7 +905,7 @@ func prunePackages(bunch *BunchFile) error {
 	}
 
 	for _, pack := range packFiles {
-		if !packagesUsed[pack] {
+		if !packagesUsed[pack] && !isRootPackageUsed(packagesUsed, pack) {
 			fmt.Printf("removing package %s ...", pack)
 			err := removePackage(pack)
 
