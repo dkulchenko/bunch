@@ -21,18 +21,18 @@ var SpinnerInterval = 50 * time.Millisecond
 
 func main() {
 	currentExecutable, _ := osext.Executable()
-	vendoredBunchPath, err := path.Join(".vendor", "bin", "bunch")
+	vendoredBunchPath := path.Join(".vendor", "bin", "bunch")
 
 	fi1, errStat1 := os.Stat(currentExecutable)
 	fi2, errStat2 := os.Stat(vendoredBunchPath)
 
-	if exists, _ := pathExists(vendoredBunchPath); err == nil && errStat1 == nil && errStat2 == nil && exists && os.SameFile(fi1, fi2) {
+	if exists, _ := pathExists(vendoredBunchPath); errStat1 == nil && errStat2 == nil && exists && os.SameFile(fi1, fi2) {
 		cmd := exec.Command(vendoredBunchPath, os.Args[1:]...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
-		err = cmd.Run()
+		err := cmd.Run()
 		if err != nil {
 			fmt.Println("running vendored bin/bunch was unsuccessful")
 			os.Exit(1)
