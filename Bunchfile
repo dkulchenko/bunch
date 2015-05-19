@@ -5,5 +5,6 @@ github.com/fatih/color 191595cf
 github.com/briandowns/spinner eb21a4a5
 github.com/hashicorp/go-version bb92dddf
 github.com/juju/errors 4567a5e6
+github.com/kardianos/osext
 
 github.com/stretchr/testify

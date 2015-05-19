@@ -5,9 +5,11 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/codegangsta/cli"
+	"github.com/kardianos/osext"
 )
 
 var InitialPath string
@@ -19,14 +21,16 @@ var SpinnerCharSet = 14
 var SpinnerInterval = 50 * time.Millisecond
 
 func main() {
-	vendoredBunchPath := path.Join(".vendor", "bin", "bunch")
-	if exists, _ := pathExists(vendoredBunchPath); exists {
+	currentExecutable, _ := osext.Executable()
+	vendoredBunchPath, err := filepath.Abs(path.Join(".vendor", "bin", "bunch"))
+
+	if exists, _ := pathExists(vendoredBunchPath); err == nil && exists && currentExecutable != vendoredBunchPath {
 		cmd := exec.Command(vendoredBunchPath, os.Args[1:]...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
-		err := cmd.Run()
+		err = cmd.Run()
 		if err != nil {
 			fmt.Println("running vendored bin/bunch was unsuccessful")
 			os.Exit(1)
