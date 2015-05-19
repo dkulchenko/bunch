@@ -33,16 +33,14 @@ func main() {
 		cmd.Stderr = os.Stderr
 
 		err := cmd.Run()
-		if err != nil {
-			fmt.Println("running vendored bin/bunch was unsuccessful")
-			os.Exit(1)
-		} else {
+		if err == nil {
 			if cmd.ProcessState.Success() {
 				os.Exit(0)
-			} else {
-				os.Exit(1)
 			}
 		}
+
+		// if "subbunch" succeeded, exit, otherwise, continue with regular bunch business
+		fmt.Println("vendored bunch exited with a non-zero exit status, trying again with global bunch")
 	}
 
 	InitialPath = os.Getenv("PATH")
