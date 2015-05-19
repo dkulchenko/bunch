@@ -989,7 +989,7 @@ func lockPackages(b *BunchFile) error {
 	if err != nil {
 		return errors.Trace(err)
 	} else {
-		err = ioutil.WriteFile("Bunchfile.lock", jsonOut, 0644)
+		err = ioutil.WriteFile("Bunchfile.lock", append(jsonOut, '\n'), 0644)
 		if err != nil {
 			return errors.Trace(err)
 		}

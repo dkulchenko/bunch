@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -75,7 +76,12 @@ func (b *BunchFile) AddPackage(packString string) error {
 		b.Raw[index] = newLine
 	} else {
 		b.Packages = append(b.Packages, pack)
-		b.Raw = append(b.Raw, fmt.Sprintf("%s %s", pack.Repo, pack.Version))
+		raw := []string{pack.Repo}
+		if pack.Version != "" {
+			raw = append(raw, pack.Version)
+		}
+
+		b.Raw = append(b.Raw, strings.Join(raw, " "))
 	}
 
 	return nil
@@ -231,8 +237,6 @@ func filterCommonBasePackages(depList []string, selfBase string) []string {
 func generateBunchfile() error {
 	bunch := BunchFile{}
 
-	gopath := os.Getenv("GOPATH")
-
 	goListCommand := []string{"go", "list", "--json", "."}
 	output, err := exec.Command(goListCommand[0], goListCommand[1:]...).Output()
 	if err != nil {
@@ -252,8 +256,8 @@ func generateBunchfile() error {
 	}
 
 	for _, dep := range filterCommonBasePackages(packageInfo.Deps, packageInfo.ImportPath) {
-		depPath := path.Join(gopath, "src", dep)
-		if exists, _ := pathExists(depPath); exists {
+		// check that the package is not part of the standard library
+		if exists, _ := pathExists(path.Join(build.Default.GOROOT, "src", dep)); !exists {
 			err = bunch.AddPackage(dep)
 			if err != nil {
 				return errors.Trace(err)
