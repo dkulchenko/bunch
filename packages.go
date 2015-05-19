@@ -379,13 +379,8 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 
 	gopath := os.Getenv("GOPATH")
 	packageDir := path.Join(gopath, "src", repo)
-	pkgPath := fmt.Sprintf("%s.a", path.Join(gopath, "pkg", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), repo))
 
 	if exists, _ := pathExists(packageDir); !exists {
-		return true, NilInfo, nil
-	}
-
-	if exists, _ := pathExists(pkgPath); !exists {
 		return true, NilInfo, nil
 	}
 
@@ -466,6 +461,12 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 		InstalledCommit:      HEADString,
 		UpstreamDiffCount:    upstreamDiffCount,
 		InstalledDiffCount:   installedDiffCount,
+	}
+
+	pkgPath := fmt.Sprintf("%s.a", path.Join(gopath, "pkg", fmt.Sprintf("%s_%s", runtime.GOOS, runtime.GOARCH), repo))
+
+	if exists, _ := pathExists(pkgPath); !exists {
+		return true, recencyInfo, nil
 	}
 
 	if versionString != HEADString {
