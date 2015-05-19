@@ -71,6 +71,7 @@ func fetchPackage(repo string) error {
 	if _, err := os.Stat(packageDir); err != nil {
 		if os.IsNotExist(err) {
 			var s *spinner.Spinner
+
 			if Verbose {
 				s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
 				s.Prefix = fmt.Sprintf("fetching %s ", repo)
@@ -570,7 +571,7 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 
 		if (needsUpdate || forceUpdate) && checkUpstream {
 			var s *spinner.Spinner
-			if !Verbose {
+			if Verbose {
 				s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
 				s.Prefix = fmt.Sprintf("\rfetching %s ... ", pack.Repo)
 				s.Color("green")
@@ -588,9 +589,9 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 			}
 
 			if Verbose {
+				s.Stop()
 				fmt.Println("")
 			} else {
-				s.Stop()
 				fmt.Printf("\rfetching %s ... %s      \n", pack.Repo, color.GreenString("done"))
 			}
 		}
