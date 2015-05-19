@@ -66,7 +66,7 @@ func fetchPackage(repo string) error {
 	}
 
 	gopath := os.Getenv("GOPATH")
-	packageDir := path.Join(gopath, "src", repo)
+	packageDir := path.Join(gopath, "src", getRealRepoPath(repo))
 
 	if _, err := os.Stat(packageDir); err != nil {
 		if os.IsNotExist(err) {
@@ -102,7 +102,7 @@ func fetchPackage(repo string) error {
 		_ = os.Chdir(wd)
 	}()
 
-	packageDir, err = getPackageRootDir(repo)
+	packageDir, err = getPackageRootDir(getRealRepoPath(repo))
 	if err != nil {
 		return errors.Trace(err)
 	}
@@ -160,7 +160,7 @@ func fetchPackageDependencies(repo string) error {
 	}
 
 	gopath := os.Getenv("GOPATH")
-	packageDir := path.Join(gopath, "src", repo)
+	packageDir := path.Join(gopath, "src", getRealRepoPath(repo))
 
 	defer func() {
 		_ = os.Chdir(wd)
@@ -202,7 +202,7 @@ func buildPackage(repo string) error {
 	}
 
 	gopath := os.Getenv("GOPATH")
-	packageDir := path.Join(gopath, "src", repo)
+	packageDir := path.Join(gopath, "src", getRealRepoPath(repo))
 
 	defer func() {
 		_ = os.Chdir(wd)
@@ -244,7 +244,7 @@ func installPackage(repo string) error {
 	}
 
 	gopath := os.Getenv("GOPATH")
-	packageDir := path.Join(gopath, "src", repo)
+	packageDir := path.Join(gopath, "src", getRealRepoPath(repo))
 
 	defer func() {
 		_ = os.Chdir(wd)
@@ -290,7 +290,7 @@ func setPackageVersion(repo string, version string, humanVersion string) error {
 	}
 
 	gopath := os.Getenv("GOPATH")
-	packageDir := path.Join(gopath, "src", repo)
+	packageDir := path.Join(gopath, "src", getRealRepoPath(repo))
 
 	defer func() {
 		_ = os.Chdir(wd)
@@ -354,6 +354,14 @@ func countNonEmptyStrings(ar []string) int {
 	return counter
 }
 
+func getRealRepoPath(pack string) string {
+	if strings.HasSuffix(pack, "...") {
+		return strings.Replace(pack, "/...", "", -1)
+	} else {
+		return pack
+	}
+}
+
 type PackageRecencyInfo struct {
 	LatestCommit         string
 	LatestUpstreamCommit string
@@ -365,7 +373,7 @@ type PackageRecencyInfo struct {
 func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bool = needsUpdate
 	NilInfo := PackageRecencyInfo{}
 
-	repo := pack.Repo
+	repo := getRealRepoPath(pack.Repo)
 	version, err := getLatestVersionMatchingPattern(pack.Repo, pack.Version)
 
 	if err != nil {
