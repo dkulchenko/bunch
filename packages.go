@@ -569,12 +569,8 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 		}
 
 		if (needsUpdate || forceUpdate) && checkUpstream {
-			var s *spinner.Spinner
 			if !Verbose {
-				s = spinner.New(spinner.CharSets[SpinnerCharSet], SpinnerInterval)
-				s.Prefix = fmt.Sprintf("\rfetching %s ... ", pack.Repo)
-				s.Color("green")
-				s.Start()
+				fmt.Printf("fetching %s ... ", pack.Repo)
 			}
 
 			err = fetchPackage(pack.Repo)
@@ -590,7 +586,6 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 			if Verbose {
 				fmt.Println("")
 			} else {
-				s.Stop()
 				fmt.Printf("\rfetching %s ... %s      \n", pack.Repo, color.GreenString("done"))
 			}
 		}
