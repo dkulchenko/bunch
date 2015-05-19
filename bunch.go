@@ -26,7 +26,7 @@ func main() {
 	fi1, errStat1 := os.Stat(currentExecutable)
 	fi2, errStat2 := os.Stat(vendoredBunchPath)
 
-	if exists, _ := pathExists(vendoredBunchPath); errStat1 == nil && errStat2 == nil && exists && os.SameFile(fi1, fi2) {
+	if exists, _ := pathExists(vendoredBunchPath); errStat1 == nil && errStat2 == nil && exists && !os.SameFile(fi1, fi2) {
 		cmd := exec.Command(vendoredBunchPath, os.Args[1:]...)
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
