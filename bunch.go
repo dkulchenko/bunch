@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
+	"path"
 	"time"
 
 	"github.com/codegangsta/cli"
@@ -16,6 +19,26 @@ var SpinnerCharSet = 14
 var SpinnerInterval = 50 * time.Millisecond
 
 func main() {
+	vendoredBunchPath := path.Join(".vendor", "bin", "bunch")
+	if exists, _ := pathExists(vendoredBunchPath); exists {
+		cmd := exec.Command(vendoredBunchPath, os.Args[1:]...)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println("running vendored bin/bunch was unsuccessful")
+			os.Exit(1)
+		} else {
+			if cmd.ProcessState.Success() {
+				os.Exit(0)
+			} else {
+				os.Exit(1)
+			}
+		}
+	}
+
 	InitialPath = os.Getenv("PATH")
 	InitialGoPath = os.Getenv("GOPATH")
 

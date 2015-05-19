@@ -21,6 +21,9 @@ go get github.com/dkulchenko/bunch
 Alternatively, [precompiled binaries](https://github.com/dkulchenko/bunch/releases) for 
 supported operating systems are available.
 
+You can pin bunch itself, if you'd like to lock the version of bunch down. If bunch finds a version 
+of itself in the vendored environment (that is, .vendor/bin/bunch exists), it will use that version instead.
+
 ## Bunchfile
 
 See this [repo's Bunchfile](https://github.com/dkulchenko/bunch/blob/master/Bunchfile) as an example.
