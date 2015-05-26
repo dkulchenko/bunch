@@ -27,7 +27,7 @@ func setupVendoring() error {
 	return nil
 }
 
-func installCommand(c *cli.Context, forceUpdate bool, checkUpstream bool) {
+func installCommand(c *cli.Context, forceUpdate bool, checkUpstream bool, respectLocked bool) {
 	// bunch install
 	// bunch install github.com/abc/xyz
 	// bunch install github.com/abc/xyz github.com/abc/def
@@ -54,7 +54,7 @@ func installCommand(c *cli.Context, forceUpdate bool, checkUpstream bool) {
 			log.Fatalf("unable to read Bunchfile: %s", err)
 		}
 
-		err = installPackagesFromBunchfile(bunch, forceUpdate, checkUpstream)
+		err = installPackagesFromBunchfile(bunch, forceUpdate, checkUpstream, respectLocked)
 
 		if err != nil {
 			log.Fatalf("failed installing packages: %s %s", err, err.(*errors.Err).StackTrace())
@@ -77,7 +77,7 @@ func installCommand(c *cli.Context, forceUpdate bool, checkUpstream bool) {
 			bunch = createBunchfile()
 		}
 
-		err := installPackagesFromRepoStrings(packages, global, forceUpdate, checkUpstream)
+		err := installPackagesFromRepoStrings(packages, global, forceUpdate, checkUpstream, respectLocked)
 		if err != nil {
 			log.Fatalf("failed installing packages: %s", err)
 		}

@@ -518,20 +518,20 @@ func parsePackage(packString string) Package {
 	return pack
 }
 
-func installPackagesFromBunchfile(b *BunchFile, forceUpdate bool, checkUpstream bool) error {
-	return installPackages(b.Packages, false, forceUpdate, checkUpstream)
+func installPackagesFromBunchfile(b *BunchFile, forceUpdate bool, checkUpstream bool, respectLocked bool) error {
+	return installPackages(b.Packages, false, forceUpdate, checkUpstream, respectLocked)
 }
 
-func installPackagesFromRepoStrings(packageStrings []string, installGlobally bool, forceUpdate bool, checkUpstream bool) error {
+func installPackagesFromRepoStrings(packageStrings []string, installGlobally bool, forceUpdate bool, checkUpstream bool, respectLocked bool) error {
 	packages := make([]Package, len(packageStrings))
 	for i, packString := range packageStrings {
 		packages[i] = parsePackage(packString)
 	}
 
-	return installPackages(packages, installGlobally, forceUpdate, checkUpstream)
+	return installPackages(packages, installGlobally, forceUpdate, checkUpstream, respectLocked)
 }
 
-func installPackages(packages []Package, installGlobally bool, forceUpdate bool, checkUpstream bool) error {
+func installPackages(packages []Package, installGlobally bool, forceUpdate bool, checkUpstream bool, respectLocked bool) error {
 	if !installGlobally {
 		err := setVendorEnv()
 		if err != nil {
@@ -622,7 +622,7 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 				}
 			}
 
-			if pack.LockedVersion != "" && !forceUpdate {
+			if pack.LockedVersion != "" && respectLocked {
 				version = pack.LockedVersion
 			}
 
