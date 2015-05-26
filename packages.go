@@ -289,8 +289,10 @@ func setPackageVersion(repo string, version string, humanVersion string) error {
 		return errors.Trace(err)
 	}
 
-	gopath := os.Getenv("GOPATH")
-	packageDir := path.Join(gopath, "src", getRealRepoPath(repo))
+	packageDir, err := getPackageRootDir(getRealRepoPath(repo))
+	if err != nil {
+		return errors.Trace(err)
+	}
 
 	defer func() {
 		_ = os.Chdir(wd)
