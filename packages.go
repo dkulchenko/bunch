@@ -490,7 +490,11 @@ func checkPackageRecency(pack Package) (bool, PackageRecencyInfo, error) { // bo
 			return false, recencyInfo, nil
 		}
 	} else {
-		return false, recencyInfo, nil
+		if pack.LockedVersion != "" && pack.LockedVersion != HEADString {
+			return true, recencyInfo, nil
+		} else {
+			return false, recencyInfo, nil
+		}
 	}
 
 	return false, NilInfo, nil
