@@ -255,7 +255,7 @@ func generateBunchfile() error {
 		return errors.Trace(err)
 	}
 
-	for _, dep := range filterCommonBasePackages(packageInfo.Deps, packageInfo.ImportPath) {
+	for _, dep := range filterCommonBasePackages(append(packageInfo.Deps, packageInfo.TestImports...), packageInfo.ImportPath) {
 		// check that the package is not part of the standard library
 		if exists, _ := pathExists(path.Join(build.Default.GOROOT, "src", dep)); !exists {
 			err = bunch.AddPackage(dep)

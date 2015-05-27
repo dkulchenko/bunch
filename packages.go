@@ -670,11 +670,12 @@ func installPackages(packages []Package, installGlobally bool, forceUpdate bool,
 }
 
 type GoList struct {
-	Name       string
-	Doc        string
-	ImportPath string
-	Imports    []string
-	Deps       []string
+	Name        string
+	Doc         string
+	ImportPath  string
+	Imports     []string
+	TestImports []string
+	Deps        []string
 }
 
 func isEmptyDir(name string) (bool, error) {
