@@ -49,7 +49,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "bunch"
 	app.Usage = "npm-like tool for managing Go dependencies"
-	app.Version = "0.0.1"
+	app.Version = "0.6"
 	app.Authors = []cli.Author{cli.Author{Name: "Daniil Kulchenko", Email: "daniil@kulchenko.com"}}
 
 	app.Flags = []cli.Flag{
