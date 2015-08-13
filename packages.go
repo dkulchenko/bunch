@@ -189,7 +189,7 @@ func fetchPackageDependencies(repo string) error {
 	}
 
 	if err != nil {
-		return errors.Annotatef(err, "failed fetching dependencies forpackage %s, output: %s", repo, goGetOutput)
+		return errors.Annotatef(err, "failed fetching dependencies for package %s, output: %s", repo, goGetOutput)
 	}
 
 	return nil
