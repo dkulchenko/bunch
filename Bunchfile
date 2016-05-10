@@ -1,7 +1,7 @@
 github.com/dkulchenko/bunch !self
 
-github.com/codegangsta/cli 30b361b
-github.com/fatih/color 191595cf
+github.com/codegangsta/cli de28b84
+github.com/fatih/color 533cd7f
 github.com/briandowns/spinner eb21a4a5
 github.com/hashicorp/go-version bb92dddf
 github.com/juju/errors 4567a5e6
