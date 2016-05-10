@@ -80,16 +80,18 @@ func main() {
 					Usage: "install package to global $GOPATH instead of vendored directory",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				installCommand(c, false, true, true)
+				return nil
 			},
 		},
 		{
 			Name:    "update",
 			Aliases: []string{"u"},
 			Usage:   "update package(s)",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				installCommand(c, true, true, false)
+				return nil
 			},
 		},
 		{
@@ -106,74 +108,84 @@ func main() {
 					Usage: "uninstall package from global $GOPATH instead of vendored directory",
 				},
 			},
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				uninstallCommand(c)
+				return nil
 			},
 		},
 		{
 			Name:  "prune",
 			Usage: "remove packages not referenced in Bunchfile",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				pruneCommand(c)
+				return nil
 			},
 		},
 		{
 			Name:  "outdated",
 			Usage: "list outdated packages",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				outdatedCommand(c)
+				return nil
 			},
 		},
 		{
 			Name:  "lock",
 			Usage: "generate a file locking down current versions of dependencies",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				lockCommand(c)
+				return nil
 			},
 		},
 		{
 			Name:  "rebuild",
 			Usage: "rebuild all dependencies",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				installCommand(c, true, false, true)
+				return nil
 			},
 		},
 		{
 			Name:  "generate",
 			Usage: "generate a Bunchfile based on package imports in current directory",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				generateCommand(c)
+				return nil
 			},
 		},
 		{
 			Name:            "go",
 			Usage:           "run a Go command within the vendor environment (e.g. bunch go fmt)",
 			SkipFlagParsing: true,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				goCommand(c)
+				return nil
 			},
 		},
 		{
 			Name:            "exec",
 			Usage:           "run any command within the vendor environment (e.g. bunch exec make)",
 			SkipFlagParsing: true,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				execCommand(c)
+				return nil
 			},
 		},
 		{
 			Name:            "shell",
 			Usage:           "start a shell within the vendor environment",
 			SkipFlagParsing: true,
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				shellCommand(c)
+				return nil
 			},
 		},
 		{
 			Name:  "shim",
 			Usage: "sourced in .bash_profile to alias the 'go' tool",
-			Action: func(c *cli.Context) {
+			Action: func(c *cli.Context) error {
 				shimCommand(c)
+				return nil
 			},
 		},
 	}
